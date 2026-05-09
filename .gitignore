@@ -1,0 +1,22 @@
+# .gitignore — Archivos que Git NO debe rastrear ni subir a GitHub
+
+# Dependencias (se regeneran con npm install — pesan cientos de MB)
+node_modules/
+
+# Archivos de build (se regeneran con npm run build)
+dist/
+
+# Variables de entorno locales (¡NUNCA subir las claves de API!)
+.env.local
+.env.*.local
+
+# Logs de npm
+npm-debug.log*
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de editores de código
+.vscode/
+.idea/

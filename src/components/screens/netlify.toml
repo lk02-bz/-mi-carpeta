@@ -1,0 +1,24 @@
+# netlify.toml — Configuración de deploy para Netlify
+#
+# ¿Para qué sirve este archivo?
+# Le dice a Netlify cómo compilar y servir tu app React.
+#
+# Sin esto, Netlify no sabría que es un proyecto Vite
+# ni qué carpeta contiene el resultado del build.
+#
+# [[redirects]] es CRÍTICO para apps de una sola página (SPA):
+# Cuando el usuario está en /home y recarga la página,
+# el navegador le pide /home al servidor.
+# Netlify no tiene ese archivo (todo está en index.html),
+# así que sin este redirect devolvería un error 404.
+# Con el redirect, todas las rutas sirven index.html
+# y React maneja la navegación del lado del cliente.
+
+[build]
+  command   = "npm run build"  # Comando para compilar la app
+  publish   = "dist"           # Carpeta que Vite genera con el resultado
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
