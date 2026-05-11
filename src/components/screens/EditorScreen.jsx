@@ -4,16 +4,17 @@
 ║                                                          ║
 ║  Pantalla para crear y editar apuntes.                   ║
 ║                                                          ║
-║  Dos modos según currentFrame.noteId:                    ║
-║  • null  → Crear nuevo apunte                            ║
-║  • uuid  → Editar apunte existente                       ║
-║                                                          ║
-║  Incluye selector de categoría y opción de eliminar.     ║
+║  Cambios Fase 2:                                         ║
+║  ✦ Reemplaza <textarea> por <RichEditor>                 ║
+║  ✦ El estado `contenido` ahora es HTML (string)          ║
+║  ✦ El resto de la lógica (guardar, eliminar, cats)       ║
+║    no cambia — solo se enchufó el nuevo editor           ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
 import { useState, useEffect } from 'react'
 import { useApp }              from '../../context/AppContext'
+import RichEditor              from '../editor/RichEditor'
 
 export default function EditorScreen() {
   const {
@@ -27,27 +28,13 @@ export default function EditorScreen() {
     showToast,
   } = useApp()
 
-  /*
-    Leemos del frame actual qué nota y qué categoría están activas.
-    noteId = null → modo creación
-    noteId = uuid → modo edición
-  */
   const { noteId, catId } = currentFrame
   const modoEdicion = noteId !== null
 
-  /*
-    Si estamos editando, buscamos la nota existente.
-    Si estamos creando, nota es undefined (no importa).
-  */
   const notaExistente = modoEdicion
     ? notes.find(n => n.id === noteId)
     : null
 
-  /*
-    Estado del formulario.
-    useEffect inicializa los campos cuando la pantalla se monta
-    o cuando noteId cambia (por si el usuario abre otra nota).
-  */
   const [titulo,      setTitulo]      = useState('')
   const [contenido,   setContenido]   = useState('')
   const [catSelec,    setCatSelec]    = useState(catId || '')
@@ -58,19 +45,17 @@ export default function EditorScreen() {
 
   useEffect(() => {
     if (modoEdicion && notaExistente) {
-      // Modo edición: pre-cargar los datos de la nota
       setTitulo(notaExistente.title)
       setContenido(notaExistente.content)
       setCatSelec(notaExistente.category_id)
     } else {
-      // Modo creación: empezar limpio, con la categoría del contexto preseleccionada
       setTitulo('')
       setContenido('')
       setCatSelec(catId || (cats[0]?.id ?? ''))
     }
     setError('')
     setConfirmando(false)
-  }, [noteId]) // Se re-ejecuta si noteId cambia // eslint-disable-line react-hooks/exhaustive-deps
+  }, [noteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   /* ── handleGuardar ─────────────────────────────────────── */
@@ -89,18 +74,12 @@ export default function EditorScreen() {
     setGuardando(true)
 
     if (modoEdicion) {
-      /*
-        Modo edición: comparamos con los valores originales.
-        Solo enviamos los campos que realmente cambiaron.
-        Esto evita writes innecesarios a Supabase.
-      */
       const cambios = {}
-      if (tituloLimpio         !== notaExistente.title)       cambios.title       = tituloLimpio
-      if (contenido            !== notaExistente.content)     cambios.content     = contenido
-      if (catSelec             !== notaExistente.category_id) cambios.categoryId  = catSelec
+      if (tituloLimpio !== notaExistente.title)       cambios.title      = tituloLimpio
+      if (contenido    !== notaExistente.content)     cambios.content    = contenido
+      if (catSelec     !== notaExistente.category_id) cambios.categoryId = catSelec
 
       if (Object.keys(cambios).length === 0) {
-        // No hubo cambios, no vale la pena hacer la llamada
         showToast('Sin cambios')
         goBack()
         return
@@ -112,7 +91,6 @@ export default function EditorScreen() {
       showToast('Apunte actualizado ✓')
 
     } else {
-      // Modo creación
       const { error } = await createNote({
         title:      tituloLimpio,
         content:    contenido,
@@ -170,14 +148,13 @@ export default function EditorScreen() {
         />
       </div>
 
-      {/* ── Contenido ── */}
+      {/* ── Contenido (RichEditor reemplaza al textarea) ── */}
       <div className="fld">
         <label className="lbl">Contenido</label>
-        <textarea
-          value={contenido}
-          onChange={e => setContenido(e.target.value)}
+        <RichEditor
+          content={contenido}
+          onChange={setContenido}
           placeholder="Escribí tu apunte acá..."
-          style={{ minHeight: 200 }}
         />
       </div>
 
