@@ -2,47 +2,53 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/screens/EditorScreen.jsx                 ║
 ║                                                          ║
-║  Pantalla para crear y editar apuntes.                   ║
-║                                                          ║
-║  Cambios Fase 2:                                         ║
-║  ✦ Reemplaza <textarea> por <RichEditor>                 ║
-║  ✦ El estado `contenido` ahora es HTML (string)          ║
-║  ✦ El resto de la lógica (guardar, eliminar, cats)       ║
-║    no cambia — solo se enchufó el nuevo editor           ║
+║  Cambios Fase 2 (Storage):                               ║
+║  ✦ Integra useAttachments para adjuntos de la nota       ║
+║  ✦ handleImageUpload: sube imagen y devuelve URL         ║
+║  ✦ AttachmentPanel debajo del editor                     ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
-import { useState, useEffect } from 'react'
-import { useApp }              from '../../context/AppContext'
-import RichEditor              from '../editor/RichEditor'
+import { useState, useEffect, useCallback } from 'react'
+import { useApp }                           from '../../context/AppContext'
+import { useAttachments }                   from '../../hooks/useAttachments'
+import { uploadFile, ALLOWED_TYPES }        from '../../lib/storage'
+import RichEditor                           from '../editor/RichEditor'
+import AttachmentPanel                      from '../editor/AttachmentPanel'
 
 export default function EditorScreen() {
   const {
-    cats,
-    notes,
-    createNote,
-    updateNote,
-    deleteNote,
-    currentFrame,
-    goBack,
-    showToast,
+    cats, notes,
+    createNote, updateNote, deleteNote,
+    currentFrame, goBack, showToast, user,
   } = useApp()
 
   const { noteId, catId } = currentFrame
-  const modoEdicion = noteId !== null
+  const modoEdicion  = noteId !== null
+  const notaExistente = modoEdicion ? notes.find(n => n.id === noteId) : null
 
-  const notaExistente = modoEdicion
-    ? notes.find(n => n.id === noteId)
-    : null
+  const [titulo,        setTitulo]        = useState('')
+  const [contenido,     setContenido]     = useState('')
+  const [catSelec,      setCatSelec]      = useState(catId || '')
+  const [confirmando,   setConfirmando]   = useState(false)
+  const [guardando,     setGuardando]     = useState(false)
+  const [borrando,      setBorrando]      = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [error,         setError]         = useState('')
 
-  const [titulo,      setTitulo]      = useState('')
-  const [contenido,   setContenido]   = useState('')
-  const [catSelec,    setCatSelec]    = useState(catId || '')
-  const [confirmando, setConfirmando] = useState(false)
-  const [guardando,   setGuardando]   = useState(false)
-  const [borrando,    setBorrando]    = useState(false)
-  const [error,       setError]       = useState('')
+  /* ── Hook de adjuntos ──
+     Solo activo cuando hay un noteId (nota ya guardada).
+     Si es nota nueva, attachments estará vacío y disabled=true.
+  */
+  const {
+    attachments,
+    uploading:   attachmentUploading,
+    addAttachment,
+    removeAttachment,
+  } = useAttachments(noteId, user?.id)
 
+
+  /* ── Inicializar formulario ── */
   useEffect(() => {
     if (modoEdicion && notaExistente) {
       setTitulo(notaExistente.title)
@@ -58,17 +64,65 @@ export default function EditorScreen() {
   }, [noteId]) // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  /* ── handleGuardar ─────────────────────────────────────── */
+  /* ── handleImageUpload ─────────────────────────────────────
+     Se pasa como prop a RichEditor y Toolbar.
+     Sube la imagen a Storage y devuelve la URL pública
+     para que TipTap la inserte como <img> en el editor.
+  */
+  const handleImageUpload = useCallback(async (file) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('Solo se permiten imágenes aquí')
+      return null
+    }
+
+    setImageUploading(true)
+    const { url, error: uploadError } = await uploadFile(file, user.id)
+    setImageUploading(false)
+
+    if (uploadError) {
+      showToast(uploadError.message || 'Error al subir imagen')
+      return null
+    }
+
+    return url
+  }, [user, showToast])
+
+
+  /* ── handleFileUpload ──────────────────────────────────────
+     Se pasa a AttachmentPanel para subir PDFs y docs.
+  */
+  const handleFileUpload = useCallback(async (file) => {
+    const fileCategory = ALLOWED_TYPES[file.type]
+    if (!fileCategory) {
+      showToast('Tipo de archivo no permitido')
+      return
+    }
+
+    const { error: attachError } = await addAttachment(file)
+    if (attachError) {
+      showToast(attachError.message || 'Error al adjuntar archivo')
+    } else {
+      showToast('Archivo adjuntado ✓')
+    }
+  }, [addAttachment, showToast])
+
+
+  /* ── handleRemoveAttachment ── */
+  const handleRemoveAttachment = useCallback(async (attachment) => {
+    const { error: removeError } = await removeAttachment(attachment)
+    if (removeError) {
+      showToast('Error al eliminar adjunto')
+    } else {
+      showToast('Adjunto eliminado')
+    }
+  }, [removeAttachment, showToast])
+
+
+  /* ── handleGuardar ── */
   async function handleGuardar() {
     const tituloLimpio = titulo.trim()
-    if (!tituloLimpio) {
-      setError('El título no puede estar vacío')
-      return
-    }
-    if (!catSelec) {
-      setError('Seleccioná una categoría')
-      return
-    }
+    if (!tituloLimpio) { setError('El título no puede estar vacío'); return }
+    if (!catSelec)     { setError('Seleccioná una categoría');       return }
 
     setError('')
     setGuardando(true)
@@ -92,9 +146,7 @@ export default function EditorScreen() {
 
     } else {
       const { error } = await createNote({
-        title:      tituloLimpio,
-        content:    contenido,
-        categoryId: catSelec,
+        title: tituloLimpio, content: contenido, categoryId: catSelec,
       })
       setGuardando(false)
       if (error) { setError('Error al guardar. Intentá de nuevo.'); return }
@@ -105,7 +157,7 @@ export default function EditorScreen() {
   }
 
 
-  /* ── handleEliminar ────────────────────────────────────── */
+  /* ── handleEliminar ── */
   async function handleEliminar() {
     setBorrando(true)
     const { error } = await deleteNote(noteId)
@@ -122,15 +174,10 @@ export default function EditorScreen() {
       {/* ── Selector de categoría ── */}
       <div className="fld">
         <label className="lbl">Categoría</label>
-        <select
-          value={catSelec}
-          onChange={e => setCatSelec(e.target.value)}
-        >
+        <select value={catSelec} onChange={e => setCatSelec(e.target.value)}>
           <option value="" disabled>Seleccioná una categoría</option>
           {cats.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.emoji} {c.name}
-            </option>
+            <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
           ))}
         </select>
       </div>
@@ -148,32 +195,40 @@ export default function EditorScreen() {
         />
       </div>
 
-      {/* ── Contenido (RichEditor reemplaza al textarea) ── */}
+      {/* ── Editor ── */}
       <div className="fld">
         <label className="lbl">Contenido</label>
         <RichEditor
           content={contenido}
           onChange={setContenido}
           placeholder="Escribí tu apunte acá..."
+          onImageUpload={handleImageUpload}
+          uploading={imageUploading}
+        />
+      </div>
+
+      {/* ── Panel de adjuntos (PDFs, docs) ── */}
+      <div className="fld">
+        <AttachmentPanel
+          attachments={attachments}
+          uploading={attachmentUploading}
+          onUpload={handleFileUpload}
+          onRemove={handleRemoveAttachment}
+          disabled={!modoEdicion}
         />
       </div>
 
       {/* ── Error ── */}
       {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
 
-      {/* ── Botón guardar ── */}
+      {/* ── Botones ── */}
       <button className="btn-p" onClick={handleGuardar} disabled={guardando}>
-        {guardando
-          ? 'Guardando...'
-          : modoEdicion ? 'Guardar cambios' : 'Guardar apunte'}
+        {guardando ? 'Guardando...' : modoEdicion ? 'Guardar cambios' : 'Guardar apunte'}
       </button>
 
-      {/* ── Cancelar ── */}
-      <button className="btn-s" onClick={goBack}>
-        Cancelar
-      </button>
+      <button className="btn-s" onClick={goBack}>Cancelar</button>
 
-      {/* ── Eliminar (solo en modo edición) ── */}
+      {/* ── Eliminar ── */}
       {modoEdicion && (
         <div style={{ marginTop: 24 }}>
           {!confirmando ? (
@@ -184,17 +239,10 @@ export default function EditorScreen() {
             <div className="confirm-box">
               <p>¿Eliminar este apunte? Esta acción no se puede deshacer.</p>
               <div className="confirm-row">
-                <button
-                  className="confirm-yes"
-                  onClick={handleEliminar}
-                  disabled={borrando}
-                >
+                <button className="confirm-yes" onClick={handleEliminar} disabled={borrando}>
                   {borrando ? 'Eliminando...' : 'Sí, eliminar'}
                 </button>
-                <button
-                  className="confirm-no"
-                  onClick={() => setConfirmando(false)}
-                >
+                <button className="confirm-no" onClick={() => setConfirmando(false)}>
                   Cancelar
                 </button>
               </div>
