@@ -5,6 +5,10 @@
 ║  Funciones puras y reutilizables que no dependen de      ║
 ║  React ni de Supabase. Pueden importarse desde           ║
 ║  cualquier componente.                                   ║
+║                                                          ║
+║  Cambios Fase 2:                                         ║
+║  ✦ stripHtml() — elimina tags HTML del contenido         ║
+║    TipTap para poder mostrar previews de texto limpio    ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -49,13 +53,50 @@ export function getGreeting() {
 
 
 /**
+ * stripHtml(html) — Elimina todos los tags HTML y devuelve texto plano
+ *
+ * @param {string} html - String con HTML (el que guarda TipTap)
+ * @returns {string}    - Texto limpio sin tags
+ *
+ * ¿Por qué lo necesitamos?
+ * TipTap guarda el contenido como HTML: "<p>Hola</p><h1>Título</h1>"
+ * Cuando mostramos previews en las tarjetas de apuntes, React renderiza
+ * ese string como texto plano — el usuario vería los tags crudos.
+ * stripHtml() convierte "<p>Hola</p><h1>Título</h1>" → "Hola Título"
+ *
+ * También es importante en la búsqueda: sin stripHtml, buscar "p"
+ * encontraría todas las notas porque todas tienen el tag <p>.
+ *
+ * Cómo funciona:
+ * 1. replace(/<[^>]*>/g, ' ')  → reemplaza cada tag por un espacio
+ *    (un espacio, no nada, para no pegar palabras de distintos bloques)
+ * 2. replace(/\s+/g, ' ')      → colapsa múltiples espacios en uno
+ * 3. trim()                    → saca espacios al principio y final
+ */
+export function stripHtml(html) {
+  if (!html) return ''
+  return html
+    .replace(/<[^>]*>/g, ' ')  // <p>, </p>, <h1>, <li>, etc. → espacio
+    .replace(/&nbsp;/g, ' ')   // entidad HTML "no-break space"
+    .replace(/&amp;/g, '&')    // entidad &
+    .replace(/&lt;/g, '<')     // entidad <
+    .replace(/&gt;/g, '>')     // entidad >
+    .replace(/&quot;/g, '"')   // entidad "
+    .replace(/\s+/g, ' ')      // múltiples espacios → uno solo
+    .trim()
+}
+
+
+/**
  * truncate(text, maxLength) — Acorta un texto largo y agrega "..."
  *
- * @param {string} text      - Texto original
+ * @param {string} text      - Texto original (ya sin HTML, después de stripHtml)
  * @param {number} maxLength - Longitud máxima (default: 90 caracteres)
  * @returns {string}         - Texto acortado
  *
  * Uso: en las tarjetas de apuntes para mostrar solo un preview del contenido.
+ * Siempre usarlo después de stripHtml() cuando el contenido viene de TipTap:
+ *   truncate(stripHtml(note.content))
  */
 export function truncate(text, maxLength = 90) {
   if (!text) return ''

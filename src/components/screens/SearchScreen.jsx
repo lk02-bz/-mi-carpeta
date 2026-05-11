@@ -5,35 +5,40 @@
 ║  Búsqueda en tiempo real sobre todos los apuntes.        ║
 ║  Filtra por título Y contenido simultáneamente.          ║
 ║  Al tocar un resultado abre el editor para editarlo.     ║
+║                                                          ║
+║  Cambios Fase 2:                                         ║
+║  ✦ Importa stripHtml para dos usos:                      ║
+║    1. Búsqueda: busca en texto plano, no en HTML crudo   ║
+║       (sin esto, buscar "p" matchearía todos los tags    ║
+║       <p> de todas las notas)                            ║
+║    2. Preview: muestra texto limpio en los resultados    ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
-import { useState }        from 'react'
-import { useApp }          from '../../context/AppContext'
-import { fdate, truncate } from '../../utils/helpers'
+import { useState }                           from 'react'
+import { useApp }                             from '../../context/AppContext'
+import { fdate, truncate, stripHtml }         from '../../utils/helpers'
 
 export default function SearchScreen() {
   const { notes, cats, pushTo } = useApp()
   const [query, setQuery] = useState('')
 
-  /*
-    Búsqueda en tiempo real — no necesita Supabase.
-    Todos los apuntes ya están en memoria (en el contexto),
-    así que podemos filtrar instantáneamente sin llamadas a la red.
-
-    toLowerCase() normaliza mayúsculas/minúsculas para que
-    "react" encuentre "React", "REACT", etc.
-
-    Buscamos en título Y en contenido con ||  (OR lógico).
-  */
   const q = query.toLowerCase().trim()
 
   const resultados = q.length < 2
-    ? []  // No buscamos con menos de 2 caracteres (evita resultados masivos)
-    : notes.filter(n =>
-        n.title.toLowerCase().includes(q) ||
-        n.content.toLowerCase().includes(q)
-      )
+    ? []
+    : notes.filter(n => {
+        /*
+          Buscamos en el texto plano, no en el HTML crudo.
+          stripHtml() convierte "<p>hola</p>" → "hola"
+          para que la búsqueda funcione sobre el contenido real.
+        */
+        const contenidoPlano = stripHtml(n.content).toLowerCase()
+        return (
+          n.title.toLowerCase().includes(q) ||
+          contenidoPlano.includes(q)
+        )
+      })
 
   function getCat(catId) {
     return cats.find(c => c.id === catId)
@@ -41,13 +46,8 @@ export default function SearchScreen() {
 
   /*
     resaltarTexto — envuelve el término buscado en <mark> para destacarlo.
-
-    Usamos una expresión regular (RegExp) construida dinámicamente
-    para encontrar el texto sin importar mayúsculas (flag 'gi'):
-    g = global (todas las ocurrencias), i = case insensitive.
-
-    split() + map() para poder insertar el <mark> como JSX.
-    (No podemos usar innerHTML en React por seguridad.)
+    Recibe texto ya limpio (sin HTML), así que el resaltado
+    funciona sobre el contenido real, no sobre los tags.
   */
   function resaltarTexto(texto, termino) {
     if (!termino || !texto) return texto
@@ -103,6 +103,13 @@ export default function SearchScreen() {
 
           {resultados.map(note => {
             const cat = getCat(note.category_id)
+            /*
+              stripHtml() antes de truncate y resaltarTexto
+              para que el usuario vea texto limpio con el término
+              resaltado, no tags HTML con el término resaltado.
+            */
+            const contenidoPlano = truncate(stripHtml(note.content), 100)
+
             return (
               <div
                 key={note.id}
@@ -118,10 +125,10 @@ export default function SearchScreen() {
                   {resaltarTexto(note.title, q)}
                 </div>
 
-                {/* Preview del contenido con término resaltado */}
-                {note.content ? (
+                {/* Preview del contenido (texto plano) con término resaltado */}
+                {contenidoPlano ? (
                   <div className="np">
-                    {resaltarTexto(truncate(note.content, 100), q)}
+                    {resaltarTexto(contenidoPlano, q)}
                   </div>
                 ) : null}
 

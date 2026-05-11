@@ -6,11 +6,15 @@
 ║  • Saludo personalizado según la hora                    ║
 ║  • Estadísticas: total de categorías y apuntes           ║
 ║  • Los 4 apuntes más recientes                           ║
+║                                                          ║
+║  Cambios Fase 2:                                         ║
+║  ✦ Importa stripHtml para limpiar el HTML de TipTap      ║
+║    antes de mostrarlo en el preview de la tarjeta        ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
-import { useApp }                   from '../../context/AppContext'
-import { getGreeting, fdate, truncate } from '../../utils/helpers'
+import { useApp }                             from '../../context/AppContext'
+import { getGreeting, fdate, truncate, stripHtml } from '../../utils/helpers'
 
 export default function HomeScreen() {
   const {
@@ -21,24 +25,13 @@ export default function HomeScreen() {
     pushTo,
   } = useApp()
 
-  /*
-    Los 4 apuntes más recientes.
-    Como useNotes ya los devuelve ordenados por updated_at DESC,
-    solo necesitamos tomar los primeros 4 con slice().
-  */
   const recientes = notes.slice(0, 4)
 
-  /*
-    Para mostrar el nombre de la categoría en cada tarjeta de apunte,
-    necesitamos buscar la categoría por su ID.
-    find() recorre el array y devuelve el primer elemento que cumple la condición.
-  */
   function getNombreCat(catId) {
     const cat = cats.find(c => c.id === catId)
     return cat ? `${cat.emoji} ${cat.name}` : ''
   }
 
-  // Mientras carga, mostramos un estado vacío limpio
   if (dataLoading) {
     return (
       <div className="cnt">
@@ -53,10 +46,6 @@ export default function HomeScreen() {
       {/* ── Saludo ── */}
       <div style={{ marginBottom: 24 }}>
         <p className="greet-name">{getGreeting()}</p>
-        {/*
-          user.email → el email del usuario logueado.
-          En el futuro podemos reemplazarlo por un nombre personalizado.
-        */}
         <p className="greet-sub">{user.email}</p>
       </div>
 
@@ -100,17 +89,19 @@ export default function HomeScreen() {
 }
 
 
-/* ── Subcomponente: tarjeta de apunte ──────────────────────
-   Lo definimos acá (no en un archivo separado) porque solo
-   lo usa HomeScreen por ahora. Cuando lo necesitemos en
-   CategoryDetail también, lo movemos a components/ui/.
-*/
 function NoteCard({ note, catLabel, onPress }) {
+  /*
+    stripHtml() elimina los tags HTML que genera TipTap.
+    Sin esto, el preview mostraría: "<p>texto</p><h1>Tít..."
+    Con esto muestra:               "texto Título..."
+  */
+  const preview = truncate(stripHtml(note.content))
+
   return (
     <div className="note-row" onClick={onPress}>
       <div className="nt">{note.title}</div>
-      {note.content ? (
-        <div className="np">{truncate(note.content)}</div>
+      {preview ? (
+        <div className="np">{preview}</div>
       ) : null}
       <div className="nd" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <span>{fdate(note.updated_at)}</span>
