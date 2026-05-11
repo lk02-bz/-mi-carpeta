@@ -747,3 +747,182 @@ textarea {
     background: rgba(255, 255, 255, 0.15);
   }
 }
+
+/*
+╔══════════════════════════════════════════════════════════╗
+║  AGREGAR AL FINAL de src/index.css                       ║
+║  (después del bloque de TipTap que ya agregaste)         ║
+║                                                          ║
+║  Estilos de Storage — Fase 2                             ║
+║  • Imágenes inline en el editor                          ║
+║  • Panel de archivos adjuntos                            ║
+╚══════════════════════════════════════════════════════════╝
+*/
+
+
+/* ════════════════════════════════════════════════════════
+   23. IMÁGENES EN EL EDITOR
+   ════════════════════════════════════════════════════════ */
+
+.rich-editor-content .ProseMirror img.editor-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  display: block;
+  margin: 10px 0;
+  cursor: default;
+}
+
+/* Indicador de imagen seleccionada */
+.rich-editor-content .ProseMirror img.editor-image.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+/* Indicador de subida dentro del editor */
+.editor-uploading {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text2);
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  text-align: center;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   24. PANEL DE ARCHIVOS ADJUNTOS
+   ════════════════════════════════════════════════════════ */
+
+.attachment-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* ── Encabezado ── */
+.attachment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.attachment-hint {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.attachment-add-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: var(--sans);
+  color: var(--text2);
+  cursor: pointer;
+  width: auto;        /* anula width:100% global */
+  margin-top: 0;      /* anula margin-top de .btn-s */
+  transition: background .12s;
+}
+.attachment-add-btn:hover   { background: var(--bg3); }
+.attachment-add-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Estado vacío ── */
+.attachment-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  color: var(--text3);
+  text-align: center;
+}
+
+/* ── Lista ── */
+.attachment-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Tarjeta individual ── */
+.attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  transition: background .12s;
+}
+
+.attachment-uploading {
+  background: var(--bg2);
+  color: var(--text2);
+}
+
+.attachment-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.attachment-info {
+  flex: 1;
+  min-width: 0;  /* permite que el texto se trunque */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attachment-name {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-size {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+/* ── Botones de acción (descargar / eliminar) ── */
+.attachment-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.attachment-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text2);
+  transition: background .12s, color .12s;
+  padding: 0;
+  width: auto;    /* para el <a> */
+  padding: 6px;
+  text-decoration: none;
+}
+.attachment-btn:hover {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+.attachment-btn-delete:hover {
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--danger);
+}
