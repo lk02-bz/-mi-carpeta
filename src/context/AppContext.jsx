@@ -1,15 +1,11 @@
 /*
 ╔══════════════════════════════════════════════════════════╗
-║  src/context/AppContext.jsx — VERSIÓN ACTUALIZADA        ║
+║  src/context/AppContext.jsx                              ║
 ║                                                          ║
-║  Cambios respecto al Bloque 1:                           ║
-║  ✦ Integra useCategories y useNotes                      ║
-║  ✦ Elimina los useState de cats/notes (los manejan       ║
-║    los hooks ahora)                                      ║
-║  ✦ Expone createCategory, deleteCategory, createNote,    ║
-║    updateNote, deleteNote en el contexto                 ║
-║                                                          ║
-║  El resto (auth, navegación, toast) no cambia.           ║
+║  Cambios Bloque C:                                       ║
+║  ✦ Integra useTags                                       ║
+║  ✦ Expone toggleFavorite en el contexto                  ║
+║  ✦ Expone tags, getTagsForNote y operaciones de tags     ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -17,6 +13,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { supabase }         from '../lib/supabase'
 import { useCategories }    from '../hooks/useCategories'
 import { useNotes }         from '../hooks/useNotes'
+import { useTags }          from '../hooks/useTags'
 
 const AppContext = createContext(null)
 
@@ -53,29 +50,18 @@ export function AppProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  /* Función de logout — la usaremos en el futuro para un botón de salir */
   const logout = useCallback(async () => {
     await supabase.auth.signOut()
-    // onAuthStateChange detecta el logout y pone user=null automáticamente
   }, [])
 
 
   /* ══════════════════════════════════════════════
      DATOS — Integración de hooks
-     ══════════════════════════════════════════════
-     
-     Llamamos a los hooks aquí, dentro del Provider.
-     Les pasamos 'user' para que sepan cuándo cargar datos
-     (cuando user es null, no hacen nada).
-     
-     AppProvider ES un componente React, por eso podemos
-     llamar hooks dentro de él (regla de hooks: solo en
-     componentes o en otros hooks).
-  */
+     ══════════════════════════════════════════════ */
   const {
     cats,
     setCats,
-    loading:         catsLoading,
+    loading:        catsLoading,
     createCategory,
     deleteCategory,
   } = useCategories(user)
@@ -83,17 +69,24 @@ export function AppProvider({ children }) {
   const {
     notes,
     setNotes,
-    loading:     notesLoading,
+    loading:        notesLoading,
     createNote,
     updateNote,
+    toggleFavorite,
     deleteNote,
   } = useNotes(user)
 
-  /*
-    dataLoading es true si CUALQUIERA de los dos hooks está cargando.
-    Usamos el operador || (OR): true si uno o ambos son true.
-  */
-  const dataLoading = catsLoading || notesLoading
+  const {
+    tags,
+    loading:        tagsLoading,
+    createTag,
+    deleteTag,
+    addTagToNote,
+    removeTagFromNote,
+    getTagsForNote,
+  } = useTags(user)
+
+  const dataLoading = catsLoading || notesLoading || tagsLoading
 
 
   /* ══════════════════════════════════════════════
@@ -161,13 +154,22 @@ export function AppProvider({ children }) {
     dataLoading,
 
     // Operaciones de categorías
-    createCategory,  // ({ name, emoji }) → { data, error }
-    deleteCategory,  // (catId) → { error }
+    createCategory,
+    deleteCategory,
 
     // Operaciones de apuntes
-    createNote,   // ({ title, content, categoryId }) → { data, error }
-    updateNote,   // (noteId, { title?, content?, categoryId? }) → { data, error }
-    deleteNote,   // (noteId) → { error }
+    createNote,
+    updateNote,
+    toggleFavorite,  // ← nuevo Bloque C
+    deleteNote,
+
+    // Tags ← nuevos Bloque C
+    tags,
+    createTag,
+    deleteTag,
+    addTagToNote,
+    removeTagFromNote,
+    getTagsForNote,
 
     // Navegación
     nav,
