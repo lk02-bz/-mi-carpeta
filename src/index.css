@@ -926,3 +926,365 @@ textarea {
   background: rgba(192, 57, 43, 0.1);
   color: var(--danger);
 }
+/*
+╔══════════════════════════════════════════════════════════╗
+║  BLOQUE PARA AGREGAR AL FINAL de src/index.css           ║
+║                                                          ║
+║  Pegá este bloque completo AL FINAL de tu index.css,     ║
+║  después de la sección del editor TipTap.                ║
+║                                                          ║
+║  Estilos del Calendario — Fase 3                         ║
+╚══════════════════════════════════════════════════════════╝
+*/
+
+
+/* ════════════════════════════════════════════════════════
+   23. CALENDARIO — Navegador de mes
+   ════════════════════════════════════════════════════════ */
+
+.cal-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+/* El título del mes es un botón (tap → ir a hoy) */
+.cal-month-label {
+  font-family: var(--serif);
+  font-size: 17px;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+  transition: background .12s;
+  font-weight: normal;
+  width: auto;
+  margin-top: 0;
+}
+.cal-month-label:active { background: var(--bg2); }
+
+
+/* ════════════════════════════════════════════════════════
+   24. CALENDARIO — Grilla mensual
+   ════════════════════════════════════════════════════════ */
+
+.cal-grid-wrap {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 12px 10px;
+}
+
+/* Header: Lun Mar Mié ... Dom */
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding: 4px 0;
+}
+
+/* Grid de 7 columnas para los días */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+/* Celda de día */
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 5px 2px 4px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  min-height: 42px;
+  transition: background .12s;
+  font-family: var(--sans);
+}
+.cal-cell:active { background: var(--bg3); }
+
+/* Celda vacía (relleno antes del día 1) */
+.cal-cell--empty { cursor: default; pointer-events: none; }
+
+/* Hoy: número en acento, sin fondo */
+.cal-cell--today .cal-day-num {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Seleccionado: fondo sólido acento */
+.cal-cell--selected {
+  background: var(--accent) !important;
+}
+.cal-cell--selected .cal-day-num {
+  color: var(--accent-fg) !important;
+  font-weight: 600;
+}
+
+/* Número del día */
+.cal-day-num {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+/* Contenedor de puntos de eventos */
+.cal-dots {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 7px;
+}
+
+/* Punto individual de evento */
+.cal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: block;
+  flex-shrink: 0;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   25. CALENDARIO — Leyenda de tipos
+   ════════════════════════════════════════════════════════ */
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding: 0 2px;
+}
+
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text3);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   26. CALENDARIO — Panel del día seleccionado
+   ════════════════════════════════════════════════════════ */
+
+.cal-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cal-day-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  color: var(--text);
+  text-transform: capitalize;
+  line-height: 1.3;
+  flex: 1;
+}
+
+/* Botón pequeño "+ Evento" / "+ Tarea" */
+.cal-add-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--sans);
+  flex-shrink: 0;
+  transition: background .12s, color .12s;
+  width: auto;
+  margin-top: 0;
+}
+.cal-add-btn:active { background: var(--bg2); color: var(--text); }
+
+
+/* ════════════════════════════════════════════════════════
+   27. CALENDARIO — Fila de evento
+   ════════════════════════════════════════════════════════ */
+
+.cal-event-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.cal-event-row:active { background: var(--bg3); }
+
+.cal-event-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.3;
+}
+.cal-event-time {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+.cal-event-notes {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 3px;
+  line-height: 1.4;
+
+  /* Truncar en 2 líneas */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   28. CALENDARIO — Fila de tarea / hábito
+   ════════════════════════════════════════════════════════ */
+
+.cal-task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cal-task-row:last-child { border-bottom: none; }
+
+/* Checkbox cuadrado */
+.cal-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border2);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  flex-shrink: 0;
+  transition: all .15s;
+  width: 22px;     /* anula width:100% global */
+  margin-top: 0;   /* anula margin-top global */
+  padding: 0;
+}
+.cal-check--done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Texto vacío dentro del panel */
+.cal-empty {
+  font-size: 13px;
+  color: var(--text3);
+  padding: 10px 0 14px;
+  line-height: 1.6;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   29. MODAL — Overlay tipo bottom sheet (mobile-first)
+   ════════════════════════════════════════════════════════ */
+
+/*
+  position: fixed → cubre toda la pantalla,
+  ignorando overflow:hidden del body.
+  z-index: 200 → por encima del toast (999) no, del toast sí.
+  Nota: el toast tiene z-index 999, así que el modal
+  necesita ≥ 200 para estar sobre el contenido pero
+  los toasts seguirán visibles encima del modal si se disparan.
+*/
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;    /* bottom sheet */
+  justify-content: center;
+}
+
+.modal-box {
+  background: var(--bg);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 20px 16px 32px;
+  width: 100%;
+  max-width: 430px;
+  max-height: 88vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  color: var(--text);
+}
+
+
+/* ════════════════════════════════════════════════════════
+   30. MODAL — Selector de tipo de evento
+   ════════════════════════════════════════════════════════ */
+
+.cal-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.cal-type-btn {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--sans);
+  text-align: left;
+  transition: all .12s;
+  width: auto;    /* anula width:100% global */
+  margin-top: 0;  /* anula margin-top global */
+}
+.cal-type-btn:active { background: var(--bg2); }
+.cal-type-btn--active {
+  font-weight: 500;
+}

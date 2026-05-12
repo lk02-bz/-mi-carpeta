@@ -1,20 +1,18 @@
 /*
-  src/components/layout/BottomNav.jsx — Barra de navegación inferior
-
-  Equivalente React del div.bnav del HTML original.
-
-  Diferencias con la versión vanilla:
-  - En vez de llamar a navTo('home') como función global,
-    usamos el hook useApp() para obtener navTo del contexto.
-  - El estado activo viene del contexto (currentFrame.screen)
-    en vez de manipular clases CSS manualmente con setNav().
+╔══════════════════════════════════════════════════════════╗
+║  src/components/layout/BottomNav.jsx                     ║
+║                                                          ║
+║  Cambios Fase 3:                                         ║
+║  ✦ Agrega botón "Calendario" como 5to ítem              ║
+║    Orden final: Inicio | Categorías | + | Buscar | Cal  ║
+╚══════════════════════════════════════════════════════════╝
 */
 
 import { useApp } from '../../context/AppContext'
 
 export default function BottomNav() {
   const { currentFrame, navTo, pushTo } = useApp()
-  const active = currentFrame.screen // pantalla actual para marcar el botón activo
+  const active = currentFrame.screen
 
   return (
     <div className="bnav">
@@ -45,12 +43,7 @@ export default function BottomNav() {
         Categorías
       </button>
 
-      {/*
-        ── Botón "+" central ──
-        Equivalente a quickAdd() en la app vanilla.
-        pushTo en vez de navTo porque abre el editor sobre la pantalla actual
-        (el usuario puede volver atrás y no pierde su contexto).
-      */}
+      {/* ── Botón "+" central ── */}
       <button
         className="addbtn"
         onClick={() => pushTo('editor', { title: 'Nuevo apunte', noteId: null })}
@@ -69,6 +62,20 @@ export default function BottomNav() {
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         Buscar
+      </button>
+
+      {/* ── Calendario ── nuevo Fase 3 ── */}
+      <button
+        className={`nbtn ${active === 'calendar' ? 'on' : ''}`}
+        onClick={() => navTo('calendar')}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8"  y1="2" x2="8"  y2="6" />
+          <line x1="3"  y1="10" x2="21" y2="10" />
+        </svg>
+        Calendario
       </button>
 
     </div>

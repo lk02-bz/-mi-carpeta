@@ -2,7 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/App.jsx — VERSIÓN FINAL                             ║
 ║                                                          ║
-║  Todas las pantallas reales. Sin placeholders.           ║
+║  Cambios Fase 3:                                         ║
+║  ✦ Importa CalendarScreen                               ║
+║  ✦ Agrega pantalla 'calendar' al sistema de screens     ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -19,6 +21,7 @@ import CategoryDetail   from './components/screens/CategoryDetail'
 import AddCategory      from './components/screens/AddCategory'
 import EditorScreen     from './components/screens/EditorScreen'
 import SearchScreen     from './components/screens/SearchScreen'
+import CalendarScreen   from './components/screens/CalendarScreen'   // ← nuevo Fase 3
 
 export default function App() {
   const { user, authLoading, currentFrame } = useApp()
@@ -39,12 +42,13 @@ export default function App() {
       <TopBar />
       <div className="screens">
 
-        <div className={`screen ${s === 'home'   ? 'active' : ''}`}><HomeScreen /></div>
-        <div className={`screen ${s === 'cats'   ? 'active' : ''}`}><CategoriesScreen /></div>
-        <div className={`screen ${s === 'catd'   ? 'active' : ''}`}><CategoryDetail /></div>
-        <div className={`screen ${s === 'addcat' ? 'active' : ''}`}><AddCategory /></div>
-        <div className={`screen ${s === 'editor' ? 'active' : ''}`}><EditorScreen /></div>
-        <div className={`screen ${s === 'search' ? 'active' : ''}`}><SearchScreen /></div>
+        <div className={`screen ${s === 'home'     ? 'active' : ''}`}><HomeScreen /></div>
+        <div className={`screen ${s === 'cats'     ? 'active' : ''}`}><CategoriesScreen /></div>
+        <div className={`screen ${s === 'catd'     ? 'active' : ''}`}><CategoryDetail /></div>
+        <div className={`screen ${s === 'addcat'   ? 'active' : ''}`}><AddCategory /></div>
+        <div className={`screen ${s === 'editor'   ? 'active' : ''}`}><EditorScreen /></div>
+        <div className={`screen ${s === 'search'   ? 'active' : ''}`}><SearchScreen /></div>
+        <div className={`screen ${s === 'calendar' ? 'active' : ''}`}><CalendarScreen /></div>
 
       </div>
       <BottomNav />
