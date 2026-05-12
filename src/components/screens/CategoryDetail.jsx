@@ -2,13 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/screens/CategoryDetail.jsx               ║
 ║                                                          ║
-║  Pantalla de detalle de una categoría.                   ║
-║  Muestra todos los apuntes de esa categoría.             ║
-║  Permite eliminar la categoría con confirmación.         ║
-║                                                          ║
-║  Cambios Fase 2:                                         ║
-║  ✦ Importa stripHtml para limpiar el HTML de TipTap      ║
-║    antes de mostrarlo en el preview de cada apunte       ║
+║  Cambios Bloque C:                                       ║
+║  ✦ Botón ⭐ en cada tarjeta para togglear favorito       ║
+║  ✦ Chips de etiquetas en las tarjetas                    ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -25,6 +21,8 @@ export default function CategoryDetail() {
     goBack,
     showToast,
     currentFrame,
+    toggleFavorite,
+    getTagsForNote,
   } = useApp()
 
   const [confirmando, setConfirmando] = useState(false)
@@ -94,12 +92,8 @@ export default function CategoryDetail() {
         </div>
       ) : (
         apuntesDeEstaCat.map(note => {
-          /*
-            stripHtml() elimina los tags HTML que genera TipTap.
-            Sin esto, el preview mostraría: "<p>texto</p><h1>Tít..."
-            Con esto muestra:               "texto Título..."
-          */
-          const preview = truncate(stripHtml(note.content))
+          const preview  = truncate(stripHtml(note.content))
+          const notaTags = getTagsForNote(note.id)
 
           return (
             <div
@@ -111,9 +105,46 @@ export default function CategoryDetail() {
                 title:  'Editar apunte',
               })}
             >
-              <div className="nt">{note.title}</div>
+              {/* ── Título + botón favorito ── */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <div className="nt" style={{ flex: 1 }}>{note.title}</div>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    toggleFavorite(note.id, note.is_favorite)
+                  }}
+                  aria-label={note.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    padding: '2px 4px',
+                    lineHeight: 1,
+                    flexShrink: 0,
+                    opacity: note.is_favorite ? 1 : 0.25,
+                    color: 'var(--text)',
+                    transition: 'opacity 0.15s',
+                  }}
+                >
+                  ★
+                </button>
+              </div>
+
+              {/* ── Preview del contenido ── */}
               {preview ? <div className="np">{preview}</div> : null}
-              <div className="nd">{fdate(note.updated_at)}</div>
+
+              {/* ── Chips de etiquetas ── */}
+              {notaTags.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                  {notaTags.map(tag => (
+                    <span key={tag.id} className="chip">#{tag.name}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Fecha ── */}
+              <div className="nd" style={{ marginTop: 6 }}>{fdate(note.updated_at)}</div>
             </div>
           )
         })
