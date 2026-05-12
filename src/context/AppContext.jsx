@@ -2,8 +2,10 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/context/AppContext.jsx                              ║
 ║                                                          ║
-║  Cambios Fase 3.1.A:                                     ║
-║  ✦ Agrega 'stats' a MAIN_SCREEN_TITLES                   ║
+║  Cambios Fase 3.1.B:                                     ║
+║  ✦ Importa y conecta useProfile                          ║
+║  ✦ Agrega 'profile' a MAIN_SCREEN_TITLES                 ║
+║  ✦ Expone displayName, avatarUrl, accentId y operaciones ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -13,6 +15,7 @@ import { useCategories }    from '../hooks/useCategories'
 import { useNotes }         from '../hooks/useNotes'
 import { useTags }          from '../hooks/useTags'
 import { useCalendar }      from '../hooks/useCalendar'
+import { useProfile }       from '../hooks/useProfile'    // ← nuevo Fase 3.1.B
 
 const AppContext = createContext(null)
 
@@ -27,7 +30,8 @@ const MAIN_SCREEN_TITLES = {
   cats:     'Categorías',
   search:   'Buscar',
   calendar: 'Calendario',
-  stats:    'Estadísticas',           // ← nuevo Fase 3.1.A
+  stats:    'Estadísticas',
+  profile:  'Perfil',               // ← nuevo Fase 3.1.B
 }
 
 const HOME_FRAME = { screen: 'home', title: 'Mi Carpeta', catId: null, noteId: null }
@@ -36,7 +40,7 @@ const HOME_FRAME = { screen: 'home', title: 'Mi Carpeta', catId: null, noteId: n
 export function AppProvider({ children }) {
 
   /* ══════════════════════════════════════════════
-     AUTENTICACIÓN (sin cambios)
+     AUTENTICACIÓN
      ══════════════════════════════════════════════ */
   const [user,        setUser]        = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -57,62 +61,53 @@ export function AppProvider({ children }) {
 
 
   /* ══════════════════════════════════════════════
-     DATOS — Integración de hooks
+     DATOS — hooks de datos
      ══════════════════════════════════════════════ */
   const {
-    cats,
-    setCats,
-    loading:        catsLoading,
-    createCategory,
-    deleteCategory,
+    cats, setCats,
+    loading: catsLoading,
+    createCategory, deleteCategory,
   } = useCategories(user)
 
   const {
-    notes,
-    setNotes,
-    loading:        notesLoading,
-    createNote,
-    updateNote,
-    toggleFavorite,
-    deleteNote,
+    notes, setNotes,
+    loading: notesLoading,
+    createNote, updateNote, toggleFavorite, deleteNote,
   } = useNotes(user)
 
   const {
     tags,
-    loading:        tagsLoading,
-    createTag,
-    deleteTag,
-    addTagToNote,
-    removeTagFromNote,
-    getTagsForNote,
+    loading: tagsLoading,
+    createTag, deleteTag,
+    addTagToNote, removeTagFromNote, getTagsForNote,
   } = useTags(user)
 
-  /* ── useCalendar — Fase 3 ────────────────────── */
   const {
-    events,
-    tasks,
-    habits,
-    habitLogs,
+    events, tasks, habits, habitLogs,
     calLoading,
-    createEvent,
-    updateEvent,
-    deleteEvent,
-    createTask,
-    toggleTask,
-    deleteTask,
-    createHabit,
-    deleteHabit,
-    toggleHabitLog,
-    getEventsForDate,
-    getTasksForDate,
-    isHabitDone,
+    createEvent, updateEvent, deleteEvent,
+    createTask, toggleTask, deleteTask,
+    createHabit, deleteHabit, toggleHabitLog,
+    getEventsForDate, getTasksForDate, isHabitDone,
   } = useCalendar(user)
+
+  /* ── useProfile — nuevo Fase 3.1.B ─────────────── */
+  const {
+    displayName,
+    avatarUrl,
+    accentId,
+    saving:          profileSaving,
+    uploadingAvatar,
+    updateDisplayName,
+    updateAvatar,
+    changeAccent,
+  } = useProfile(user)
 
   const dataLoading = catsLoading || notesLoading || tagsLoading
 
 
   /* ══════════════════════════════════════════════
-     NAVEGACIÓN (sin cambios)
+     NAVEGACIÓN
      ══════════════════════════════════════════════ */
   const [nav, setNav] = useState({ stack: [HOME_FRAME] })
   const currentFrame  = nav.stack[nav.stack.length - 1]
@@ -151,7 +146,7 @@ export function AppProvider({ children }) {
 
 
   /* ══════════════════════════════════════════════
-     TOAST (sin cambios)
+     TOAST
      ══════════════════════════════════════════════ */
   const [toast, setToast] = useState({ msg: '', visible: false })
 
@@ -166,63 +161,49 @@ export function AppProvider({ children }) {
      ══════════════════════════════════════════════ */
   const value = {
     // Auth
-    user,
-    authLoading,
-    logout,
+    user, authLoading, logout,
 
-    // Datos generales
-    cats,         setCats,
-    notes,        setNotes,
+    // Datos
+    cats, setCats,
+    notes, setNotes,
     dataLoading,
 
-    // Operaciones de categorías
-    createCategory,
-    deleteCategory,
+    // Categorías
+    createCategory, deleteCategory,
 
-    // Operaciones de apuntes
-    createNote,
-    updateNote,
-    toggleFavorite,
-    deleteNote,
+    // Apuntes
+    createNote, updateNote, toggleFavorite, deleteNote,
 
     // Tags
     tags,
-    createTag,
-    deleteTag,
-    addTagToNote,
-    removeTagFromNote,
-    getTagsForNote,
+    createTag, deleteTag,
+    addTagToNote, removeTagFromNote, getTagsForNote,
 
-    // ── Calendario (Fase 3) ───────────────────────
-    events,
-    tasks,
-    habits,
-    habitLogs,
+    // Calendario
+    events, tasks, habits, habitLogs,
     calLoading,
-    createEvent,
-    updateEvent,
-    deleteEvent,
-    createTask,
-    toggleTask,
-    deleteTask,
-    createHabit,
-    deleteHabit,
-    toggleHabitLog,
-    getEventsForDate,
-    getTasksForDate,
-    isHabitDone,
+    createEvent, updateEvent, deleteEvent,
+    createTask, toggleTask, deleteTask,
+    createHabit, deleteHabit, toggleHabitLog,
+    getEventsForDate, getTasksForDate, isHabitDone,
+
+    // ── Perfil (nuevo Fase 3.1.B) ─────────────────
+    displayName,
+    avatarUrl,
+    accentId,
+    profileSaving,
+    uploadingAvatar,
+    updateDisplayName,
+    updateAvatar,
+    changeAccent,
 
     // Navegación
-    nav,
-    currentFrame,
+    nav, currentFrame,
     canGoBack: nav.stack.length > 1,
-    navTo,
-    pushTo,
-    goBack,
+    navTo, pushTo, goBack,
 
     // Toast
-    toast,
-    showToast,
+    toast, showToast,
   }
 
   return (

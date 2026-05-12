@@ -2,10 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/screens/HomeScreen.jsx                   ║
 ║                                                          ║
-║  Cambios Bloque C:                                       ║
-║  ✦ Sección "Favoritos" arriba de "Recientes"             ║
-║  ✦ Botón ⭐ en cada tarjeta para togglear favorito       ║
-║  ✦ Chips de etiquetas en las tarjetas                    ║
+║  Cambios Fase 3.1.B:                                     ║
+║  ✦ El saludo usa displayName si existe,                  ║
+║    si no, muestra el email como antes                    ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -21,10 +20,11 @@ export default function HomeScreen() {
     pushTo,
     toggleFavorite,
     getTagsForNote,
+    displayName,         // ← nuevo Fase 3.1.B
   } = useApp()
 
-  const favoritos  = notes.filter(n => n.is_favorite)
-  const recientes  = notes.slice(0, 4)
+  const favoritos = notes.filter(n => n.is_favorite)
+  const recientes = notes.slice(0, 4)
 
   function getNombreCat(catId) {
     const cat = cats.find(c => c.id === catId)
@@ -45,10 +45,17 @@ export default function HomeScreen() {
       {/* ── Saludo ── */}
       <div style={{ marginBottom: 24 }}>
         <p className="greet-name">{getGreeting()}</p>
-        <p className="greet-sub">{user.email}</p>
+        {/*
+          Si el usuario configuró un nombre en Perfil, lo mostramos.
+          Si no, mostramos el email como antes.
+          Así el cambio es compatible con usuarios que no hayan ido al Perfil todavía.
+        */}
+        <p className="greet-sub">
+          {displayName || user.email}
+        </p>
       </div>
 
-      {/* ── Estadísticas ── */}
+      {/* ── Estadísticas rápidas ── */}
       <div className="stat-row">
         <div className="stat-c">
           <div className="sl">Categorías</div>
@@ -60,7 +67,7 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* ── Favoritos (solo si hay alguno) ── */}
+      {/* ── Favoritos ── */}
       {favoritos.length > 0 && (
         <>
           <div className="sec">Favoritos</div>
@@ -81,7 +88,7 @@ export default function HomeScreen() {
         </>
       )}
 
-      {/* ── Apuntes recientes ── */}
+      {/* ── Recientes ── */}
       <div className="sec">Recientes</div>
 
       {recientes.length === 0 ? (
@@ -117,37 +124,24 @@ function NoteCard({ note, catLabel, notaTags, onPress, onToggleFavorite }) {
   return (
     <div className="note-row" onClick={onPress}>
 
-      {/* ── Título + botón favorito ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div className="nt" style={{ flex: 1 }}>{note.title}</div>
         <button
-          onClick={e => {
-            /* stopPropagation: evita que el click en ⭐ abra el editor */
-            e.stopPropagation()
-            onToggleFavorite()
-          }}
+          onClick={e => { e.stopPropagation(); onToggleFavorite() }}
           aria-label={note.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 16,
-            padding: '2px 4px',
-            lineHeight: 1,
-            flexShrink: 0,
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 16, padding: '2px 4px', lineHeight: 1, flexShrink: 0,
             opacity: note.is_favorite ? 1 : 0.25,
-            color: 'var(--text)',
-            transition: 'opacity 0.15s',
+            color: 'var(--text)', transition: 'opacity 0.15s',
           }}
         >
           ★
         </button>
       </div>
 
-      {/* ── Preview del contenido ── */}
       {preview ? <div className="np">{preview}</div> : null}
 
-      {/* ── Chips de etiquetas ── */}
       {notaTags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
           {notaTags.map(tag => (
@@ -156,7 +150,6 @@ function NoteCard({ note, catLabel, notaTags, onPress, onToggleFavorite }) {
         </div>
       )}
 
-      {/* ── Fecha y categoría ── */}
       <div className="nd" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
         <span>{fdate(note.updated_at)}</span>
         {catLabel ? <span className="chip">{catLabel}</span> : null}
