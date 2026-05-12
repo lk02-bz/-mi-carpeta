@@ -1,15 +1,20 @@
 /*
-  src/components/layout/TopBar.jsx — VERSIÓN FINAL
-
-  Agrega un botón de logout (cerrar sesión) que aparece
-  SOLO en la pantalla de inicio (home).
-  En el resto de pantallas sigue mostrando el botón "atrás".
+╔══════════════════════════════════════════════════════════╗
+║  src/components/layout/TopBar.jsx                        ║
+║                                                          ║
+║  Cambios Fase 3.1.A (ajuste):                            ║
+║  ✦ En Home:            derecha = logout (igual que antes)║
+║  ✦ En otras pantallas: derecha = lupa → navega a Buscar  ║
+║                                                          ║
+║  En Fase 3.1.B el logout se moverá al Perfil y           ║
+║  la lupa quedará en todas las pantallas.                  ║
+╚══════════════════════════════════════════════════════════╝
 */
 
 import { useApp } from '../../context/AppContext'
 
 export default function TopBar() {
-  const { currentFrame, canGoBack, goBack, logout } = useApp()
+  const { currentFrame, canGoBack, goBack, logout, navTo } = useApp()
   const esHome = currentFrame.screen === 'home'
 
   return (
@@ -29,7 +34,11 @@ export default function TopBar() {
 
       <span className="topbar-title">{currentFrame.title}</span>
 
-      {/* Derecha: logout en home, spacer en el resto */}
+      {/* Derecha:
+            - En Home      → logout (igual que siempre, no rompemos nada)
+            - En el resto  → lupa  (acceso rápido a Buscar desde cualquier pantalla)
+          En Fase 3.1.B el logout se mueve al Perfil y la lupa queda en todos lados.
+      */}
       {esHome ? (
         <button
           className="ibtn"
@@ -44,7 +53,16 @@ export default function TopBar() {
           </svg>
         </button>
       ) : (
-        <div style={{ minWidth: 34 }} />
+        <button
+          className="ibtn"
+          onClick={() => navTo('search')}
+          aria-label="Buscar"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
       )}
 
     </div>

@@ -1,10 +1,10 @@
 /*
 ╔══════════════════════════════════════════════════════════╗
-║  src/App.jsx — VERSIÓN FINAL                             ║
+║  src/App.jsx                                             ║
 ║                                                          ║
-║  Cambios Fase 3:                                         ║
-║  ✦ Importa CalendarScreen                               ║
-║  ✦ Agrega pantalla 'calendar' al sistema de screens     ║
+║  Cambios Fase 3.1.A:                                     ║
+║  ✦ Importa StatsScreen                                   ║
+║  ✦ Agrega pantalla 'stats' al sistema de screens         ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -21,7 +21,8 @@ import CategoryDetail   from './components/screens/CategoryDetail'
 import AddCategory      from './components/screens/AddCategory'
 import EditorScreen     from './components/screens/EditorScreen'
 import SearchScreen     from './components/screens/SearchScreen'
-import CalendarScreen   from './components/screens/CalendarScreen'   // ← nuevo Fase 3
+import CalendarScreen   from './components/screens/CalendarScreen'
+import StatsScreen      from './components/screens/StatsScreen'     // ← nuevo Fase 3.1.A
 
 export default function App() {
   const { user, authLoading, currentFrame } = useApp()
@@ -49,6 +50,7 @@ export default function App() {
         <div className={`screen ${s === 'editor'   ? 'active' : ''}`}><EditorScreen /></div>
         <div className={`screen ${s === 'search'   ? 'active' : ''}`}><SearchScreen /></div>
         <div className={`screen ${s === 'calendar' ? 'active' : ''}`}><CalendarScreen /></div>
+        <div className={`screen ${s === 'stats'    ? 'active' : ''}`}><StatsScreen /></div>
 
       </div>
       <BottomNav />

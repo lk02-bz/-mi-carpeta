@@ -2,10 +2,8 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/context/AppContext.jsx                              ║
 ║                                                          ║
-║  Cambios Fase 3:                                         ║
-║  ✦ Integra useCalendar                                   ║
-║  ✦ Agrega 'calendar' a MAIN_SCREEN_TITLES               ║
-║  ✦ Expone todo el estado y operaciones del calendario    ║
+║  Cambios Fase 3.1.A:                                     ║
+║  ✦ Agrega 'stats' a MAIN_SCREEN_TITLES                   ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -14,7 +12,7 @@ import { supabase }         from '../lib/supabase'
 import { useCategories }    from '../hooks/useCategories'
 import { useNotes }         from '../hooks/useNotes'
 import { useTags }          from '../hooks/useTags'
-import { useCalendar }      from '../hooks/useCalendar'   // ← nuevo Fase 3
+import { useCalendar }      from '../hooks/useCalendar'
 
 const AppContext = createContext(null)
 
@@ -28,7 +26,8 @@ const MAIN_SCREEN_TITLES = {
   home:     'Mi Carpeta',
   cats:     'Categorías',
   search:   'Buscar',
-  calendar: 'Calendario',           // ← nuevo Fase 3
+  calendar: 'Calendario',
+  stats:    'Estadísticas',           // ← nuevo Fase 3.1.A
 }
 
 const HOME_FRAME = { screen: 'home', title: 'Mi Carpeta', catId: null, noteId: null }
@@ -88,7 +87,7 @@ export function AppProvider({ children }) {
     getTagsForNote,
   } = useTags(user)
 
-  /* ── useCalendar — nuevo Fase 3 ────────────────── */
+  /* ── useCalendar — Fase 3 ────────────────────── */
   const {
     events,
     tasks,
@@ -109,10 +108,6 @@ export function AppProvider({ children }) {
     isHabitDone,
   } = useCalendar(user)
 
-  /*
-    dataLoading: solo para notas/cats/tags (usados en varias pantallas).
-    calLoading: el calendario lo gestiona por su cuenta.
-  */
   const dataLoading = catsLoading || notesLoading || tagsLoading
 
 
@@ -198,7 +193,7 @@ export function AppProvider({ children }) {
     removeTagFromNote,
     getTagsForNote,
 
-    // ── Calendario (nuevo Fase 3) ─────────────────
+    // ── Calendario (Fase 3) ───────────────────────
     events,
     tasks,
     habits,

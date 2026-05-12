@@ -1288,3 +1288,162 @@ textarea {
 .cal-type-btn--active {
   font-weight: 500;
 }
+
+/* ════════════════════════════════════════════════════════
+   FASE 3.1.A — ESTADÍSTICAS
+   Pegá este bloque al FINAL de tu index.css
+   ════════════════════════════════════════════════════════ */
+
+
+/* ── BottomNav con 6 ítems ─────────────────────────────
+   Reducimos el padding horizontal de cada botón para que
+   6 ítems entren cómodos en 430px.
+   Antes: padding: 4px 14px  → 28px horizontales por botón
+   Ahora: padding: 4px 8px   → 16px horizontales por botón
+*/
+
+
+
+/* ── Cards de resumen ──────────────────────────────────
+   Grilla 2×2, misma base visual que .stat-c de HomeScreen
+   pero con nombre propio para no romper nada.
+*/
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.stats-card {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+}
+/* Reutiliza .sl y .sv que ya existen — no hace falta redefinirlos */
+
+
+/* ── Gráfico de barras — Apuntes por semana ────────────
+
+   Estructura HTML:
+     .week-chart
+       .week-bar-item  × 4
+         .week-bar-count   ← número encima
+         .week-bar-track   ← fondo gris
+           .week-bar-fill  ← barra de color (height dinámico)
+         .week-bar-label   ← etiqueta debajo
+
+   La altura de .week-chart es fija (140px).
+   .week-bar-item usa flex column para apilar los elementos.
+   .week-bar-track toma el espacio restante (flex: 1).
+*/
+.week-chart {
+  display: flex;
+  gap: 8px;
+  height: 140px;
+  margin-bottom: 28px;
+}
+
+.week-bar-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.week-bar-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  height: 16px;          /* altura fija para alinear las barras */
+  line-height: 16px;
+}
+
+.week-bar-track {
+  flex: 1;               /* ocupa todo el espacio vertical disponible */
+  width: 100%;
+  background: var(--bg3);
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end; /* la barra crece desde abajo */
+  overflow: hidden;
+}
+
+.week-bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 6px 6px 0 0;   /* solo arriba redondeado */
+  transition: height 0.4s ease;
+}
+
+.week-bar-label {
+  font-size: 9px;
+  color: var(--text2);
+  text-align: center;
+  white-space: nowrap;
+  height: 14px;
+  line-height: 14px;
+}
+
+
+/* ── Filas de hábitos ──────────────────────────────────
+
+   Estructura HTML:
+     .habit-stat-row
+       .habit-stat-header  ← emoji/nombre/total + número de racha
+       .streak-dots        ← fila de 7 puntitos
+         .streak-dot-item  × 7
+           .sdot           ← círculo (gris o accent)
+           .sdot-label     ← letra del día (L, M, X…)
+*/
+.habit-stat-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  margin-bottom: 10px;
+}
+
+.habit-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+
+/* Puntitos de los últimos 7 días */
+.streak-dots {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.streak-dot-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.sdot {
+  width: 100%;
+  /* El alto del punto = el mismo ancho (cuadrado → circular) */
+  aspect-ratio: 1;
+  max-width: 32px;
+  border-radius: 50%;
+  background: var(--bg3);
+  transition: background 0.15s;
+}
+
+.sdot.done {
+  background: var(--accent);
+}
+
+.sdot-label {
+  font-size: 9px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
