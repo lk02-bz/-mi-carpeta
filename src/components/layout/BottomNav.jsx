@@ -2,10 +2,10 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/layout/BottomNav.jsx                     ║
 ║                                                          ║
-║  Cambios Fase 3.1.A (ajuste):                            ║
-║  ✦ Elimina botón Buscar (se mueve al TopBar)             ║
-║  ✦ Layout final simétrico 2 · + · 2:                     ║
-║    Inicio | Cats | + | Stats | Calendario                ║
+║  Cambios Fase 4:                                         ║
+║  ✦ Reemplaza Stats por Metas (opción A)                  ║
+║  ✦ Stats sigue accesible desde ProfileScreen             ║
+║  Layout: Inicio | Cats | + | Metas | Cal                 ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -53,18 +53,17 @@ export default function BottomNav() {
         +
       </button>
 
-      {/* ── Stats ── */}
+      {/* ── Metas ── */}
       <button
-        className={`nbtn ${active === 'stats' ? 'on' : ''}`}
-        onClick={() => navTo('stats')}
+        className={`nbtn ${active === 'goals' || active === 'vision' ? 'on' : ''}`}
+        onClick={() => navTo('goals')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <line x1="18" y1="20" x2="18" y2="10" />
-          <line x1="12" y1="20" x2="12" y2="4"  />
-          <line x1="6"  y1="20" x2="6"  y2="14" />
-          <line x1="2"  y1="20" x2="22" y2="20" />
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="5" />
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
         </svg>
-        Stats
+        Metas
       </button>
 
       {/* ── Calendario ── */}

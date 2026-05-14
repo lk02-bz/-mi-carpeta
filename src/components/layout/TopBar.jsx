@@ -2,10 +2,10 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/layout/TopBar.jsx                        ║
 ║                                                          ║
-║  Cambios Fase 3.1.B:                                     ║
-║  ✦ Home:          derecha = avatar → navega a Perfil     ║
-║  ✦ Otras screens: derecha = lupa   → navega a Buscar     ║
-║  ✦ El logout se movió a ProfileScreen                    ║
+║  Cambios Fase 4.1:                                       ║
+║  ✦ navTo('profile') → pushTo('profile')                  ║
+║  ✦ navTo('search')  → pushTo('search')                   ║
+║    → el botón ← del TopBar ahora funciona en ambas       ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -16,7 +16,7 @@ export default function TopBar() {
     currentFrame,
     canGoBack,
     goBack,
-    navTo,
+    pushTo,          // ← antes era navTo, ahora pushTo para mantener el stack
     displayName,
     avatarUrl,
     user,
@@ -24,13 +24,12 @@ export default function TopBar() {
 
   const esHome = currentFrame.screen === 'home'
 
-  /* Primera letra del nombre o email para las iniciales del avatar */
   const inicial = (displayName || user?.email || '?').charAt(0).toUpperCase()
 
   return (
     <div className="topbar">
 
-      {/* Izquierda: botón atrás */}
+      {/* Izquierda: botón atrás — visible solo cuando hay stack */}
       <button
         className="ibtn"
         style={{ visibility: canGoBack ? 'visible' : 'hidden' }}
@@ -44,14 +43,11 @@ export default function TopBar() {
 
       <span className="topbar-title">{currentFrame.title}</span>
 
-      {/* Derecha:
-            - Home      → avatar tocable (va al Perfil)
-            - El resto  → lupa (va al Buscador)
-      */}
+      {/* Derecha: avatar (home) o lupa (resto) */}
       {esHome ? (
         <button
           className="topbar-avatar"
-          onClick={() => navTo('profile')}
+          onClick={() => pushTo('profile', { title: 'Perfil' })}  // ← pushTo
           aria-label="Ir al perfil"
         >
           {avatarUrl ? (
@@ -63,7 +59,7 @@ export default function TopBar() {
       ) : (
         <button
           className="ibtn"
-          onClick={() => navTo('search')}
+          onClick={() => pushTo('search', { title: 'Buscar' })}   // ← pushTo
           aria-label="Buscar"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -2,8 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/screens/ProfileScreen.jsx                ║
 ║                                                          ║
-║  Fix: sincronización de nameInput con useEffect          ║
-║  Fix: layout del campo nombre (input full width + btn)   ║
+║  Cambios Fase 4.1:                                       ║
+║  ✦ Agrega pushTo para navegar a Stats                    ║
+║  ✦ Botón "Ver mis estadísticas" visible en perfil        ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -25,24 +26,12 @@ export default function ProfileScreen() {
     changeAccent,
     logout,
     showToast,
+    pushTo,           // ← nuevo Fase 4.1
   } = useApp()
 
   const [nameInput, setNameInput] = useState('')
   const fileInputRef = useRef(null)
 
-  /*
-    ¿Por qué useEffect y no useState con valor inicial?
-
-    displayName llega vacío la primera vez (el hook useProfile
-    lo carga de user_metadata en un useEffect propio).
-    Si usamos useState('') y después el displayName llega con valor,
-    el input ya no se actualiza porque useState solo toma el valor
-    inicial UNA sola vez.
-
-    useEffect con [displayName] como dependencia se ejecuta
-    cada vez que displayName cambia → sincroniza el input
-    cuando el valor llega desde Supabase.
-  */
   useEffect(() => {
     setNameInput(displayName)
   }, [displayName])
@@ -107,11 +96,6 @@ export default function ProfileScreen() {
       {/* ── Nombre ── */}
       <div className="sec">Nombre</div>
 
-      {/*
-        Layout corregido: input y botón en columna, no en fila.
-        El input ocupa todo el ancho. El botón está debajo.
-        Esto evita que el botón "Guardar" aplaste al input.
-      */}
       <input
         className="profile-input"
         type="text"
@@ -169,6 +153,32 @@ export default function ProfileScreen() {
       <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 28, marginTop: 8 }}>
         El color se aplica a botones, barras y acentos de toda la app.
       </p>
+
+
+      {/* ── Estadísticas ── */}
+      <div className="sec">Progreso</div>
+
+      <button
+        onClick={() => pushTo('stats', { title: 'Estadísticas' })}
+        style={{
+          width: '100%',
+          padding: '14px 16px',
+          borderRadius: 12,
+          border: '1.5px solid var(--accent)',
+          background: 'transparent',
+          color: 'var(--accent)',
+          fontWeight: 600,
+          fontSize: 14,
+          cursor: 'pointer',
+          marginBottom: 28,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+      >
+        📊 Ver mis estadísticas
+      </button>
 
 
       {/* ── Cuenta ── */}

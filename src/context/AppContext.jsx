@@ -2,10 +2,10 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/context/AppContext.jsx                              ║
 ║                                                          ║
-║  Cambios Fase 3.1.B:                                     ║
-║  ✦ Importa y conecta useProfile                          ║
-║  ✦ Agrega 'profile' a MAIN_SCREEN_TITLES                 ║
-║  ✦ Expone displayName, avatarUrl, accentId y operaciones ║
+║  Cambios Fase 4:                                         ║
+║  ✦ Importa y conecta useGoals                            ║
+║  ✦ Agrega 'goals' y 'vision' a MAIN_SCREEN_TITLES        ║
+║  ✦ Expone todo el API de metas e imágenes                ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -15,7 +15,8 @@ import { useCategories }    from '../hooks/useCategories'
 import { useNotes }         from '../hooks/useNotes'
 import { useTags }          from '../hooks/useTags'
 import { useCalendar }      from '../hooks/useCalendar'
-import { useProfile }       from '../hooks/useProfile'    // ← nuevo Fase 3.1.B
+import { useProfile }       from '../hooks/useProfile'
+import { useGoals }         from '../hooks/useGoals'      // ← nuevo Fase 4
 
 const AppContext = createContext(null)
 
@@ -31,7 +32,9 @@ const MAIN_SCREEN_TITLES = {
   search:   'Buscar',
   calendar: 'Calendario',
   stats:    'Estadísticas',
-  profile:  'Perfil',               // ← nuevo Fase 3.1.B
+  profile:  'Perfil',
+  goals:    'Mis Metas',        // ← Fase 4
+  vision:   'Vision Board',    // ← Fase 4
 }
 
 const HOME_FRAME = { screen: 'home', title: 'Mi Carpeta', catId: null, noteId: null }
@@ -89,9 +92,9 @@ export function AppProvider({ children }) {
     createTask, toggleTask, deleteTask,
     createHabit, deleteHabit, toggleHabitLog,
     getEventsForDate, getTasksForDate, isHabitDone,
+    getStreak, 
   } = useCalendar(user)
 
-  /* ── useProfile — nuevo Fase 3.1.B ─────────────── */
   const {
     displayName,
     avatarUrl,
@@ -102,6 +105,28 @@ export function AppProvider({ children }) {
     updateAvatar,
     changeAccent,
   } = useProfile(user)
+
+  /* ── useGoals — nuevo Fase 4 ──────────────────────────── */
+  const {
+    goals,
+    goalItems,
+    goalImages,
+    goalsLoading,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    addGoalItem,
+    toggleGoalItem,
+    deleteGoalItem,
+    getItemsForGoal,
+    getProgress,
+    uploadGoalImage,
+    updateImageCaption,
+    deleteGoalImage,
+    getImagesForGoal,
+    getBoardImages,
+    uploadGoalCover,
+  } = useGoals(user)
 
   const dataLoading = catsLoading || notesLoading || tagsLoading
 
@@ -186,8 +211,9 @@ export function AppProvider({ children }) {
     createTask, toggleTask, deleteTask,
     createHabit, deleteHabit, toggleHabitLog,
     getEventsForDate, getTasksForDate, isHabitDone,
+    getStreak, 
 
-    // ── Perfil (nuevo Fase 3.1.B) ─────────────────
+    // Perfil
     displayName,
     avatarUrl,
     accentId,
@@ -196,6 +222,26 @@ export function AppProvider({ children }) {
     updateDisplayName,
     updateAvatar,
     changeAccent,
+
+    // ── Metas & Vision Board (Fase 4) ─────────────────────
+    goals,
+    goalItems,
+    goalImages,
+    goalsLoading,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    addGoalItem,
+    toggleGoalItem,
+    deleteGoalItem,
+    getItemsForGoal,
+    getProgress,
+    uploadGoalImage,
+    updateImageCaption,
+    deleteGoalImage,
+    getImagesForGoal,
+    getBoardImages,
+    uploadGoalCover,
 
     // Navegación
     nav, currentFrame,

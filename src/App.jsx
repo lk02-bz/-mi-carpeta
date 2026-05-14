@@ -2,9 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/App.jsx                                             ║
 ║                                                          ║
-║  Cambios Fase 3.1.B:                                     ║
-║  ✦ Importa ProfileScreen                                 ║
-║  ✦ Agrega pantalla 'profile' al sistema de screens       ║
+║  Cambios Fase 4:                                         ║
+║  ✦ Importa GoalsScreen y VisionBoardScreen               ║
+║  ✦ Agrega pantallas 'goals' y 'vision' al sistema        ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -14,16 +14,18 @@ import TopBar    from './components/layout/TopBar'
 import BottomNav from './components/layout/BottomNav'
 import Toast     from './components/layout/Toast'
 
-import AuthScreen       from './components/screens/AuthScreen'
-import HomeScreen       from './components/screens/HomeScreen'
-import CategoriesScreen from './components/screens/CategoriesScreen'
-import CategoryDetail   from './components/screens/CategoryDetail'
-import AddCategory      from './components/screens/AddCategory'
-import EditorScreen     from './components/screens/EditorScreen'
-import SearchScreen     from './components/screens/SearchScreen'
-import CalendarScreen   from './components/screens/CalendarScreen'
-import StatsScreen      from './components/screens/StatsScreen'
-import ProfileScreen    from './components/screens/ProfileScreen'   // ← nuevo Fase 3.1.B
+import AuthScreen         from './components/screens/AuthScreen'
+import HomeScreen         from './components/screens/HomeScreen'
+import CategoriesScreen   from './components/screens/CategoriesScreen'
+import CategoryDetail     from './components/screens/CategoryDetail'
+import AddCategory        from './components/screens/AddCategory'
+import EditorScreen       from './components/screens/EditorScreen'
+import SearchScreen       from './components/screens/SearchScreen'
+import CalendarScreen     from './components/screens/CalendarScreen'
+import StatsScreen        from './components/screens/StatsScreen'
+import ProfileScreen      from './components/screens/ProfileScreen'
+import GoalsScreen        from './components/screens/GoalsScreen'        // ← nuevo Fase 4
+import VisionBoardScreen  from './components/screens/VisionBoardScreen'  // ← nuevo Fase 4
 
 export default function App() {
   const { user, authLoading, currentFrame } = useApp()
@@ -53,6 +55,8 @@ export default function App() {
         <div className={`screen ${s === 'calendar' ? 'active' : ''}`}><CalendarScreen /></div>
         <div className={`screen ${s === 'stats'    ? 'active' : ''}`}><StatsScreen /></div>
         <div className={`screen ${s === 'profile'  ? 'active' : ''}`}><ProfileScreen /></div>
+        <div className={`screen ${s === 'goals'    ? 'active' : ''}`}><GoalsScreen /></div>        {/* ← Fase 4 */}
+        <div className={`screen ${s === 'vision'   ? 'active' : ''}`}><VisionBoardScreen /></div>  {/* ← Fase 4 */}
 
       </div>
       <BottomNav />

@@ -2,18 +2,51 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/hooks/useCalendar.js                                ║
 ║                                                          ║
-║  Puente entre React y las tablas de Supabase:            ║
-║    • events      → eventos, exámenes, parciales          ║
-║    • daily_tasks → tareas del día                        ║
-║    • habits      → hábitos diarios                       ║
-║    • habit_logs  → registro de hábitos completados       ║
-║                                                          ║
-║  Fase 3 — Calendario                                     ║
+║  Cambios Fase 4.1:                                       ║
+║  ✦ calcStreak() helper local (con timezone correcta)     ║
+║  ✦ createHabit acepta reward_text                        ║
+║  ✦ toggleHabitLog devuelve { milestone } para premios    ║
+║  ✦ getStreak(habitId) expuesto para usar en pantallas    ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+
+
+/* ── Helper: fecha local como 'YYYY-MM-DD' ─────────────────
+   Usamos getFullYear/Month/Date en vez de toISOString()
+   porque toISOString() convierte a UTC, dando el día
+   equivocado a las 22-23hs en Argentina (UTC-3).
+*/
+function localDateStr(date = new Date()) {
+  const y   = date.getFullYear()
+  const m   = String(date.getMonth() + 1).padStart(2, '0')
+  const d   = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+
+/* ── Helper: calcular racha actual de un hábito ────────────
+   Recorre días hacia atrás desde hoy.
+   Para cuando encuentra un día sin log.
+   Devuelve cantidad de días consecutivos.
+*/
+function calcStreak(habitId, habitLogs) {
+  let streak = 0
+  const d    = new Date()
+
+  while (streak < 365) {
+    const dateStr = localDateStr(d)
+    const hecho   = habitLogs.some(l => l.habit_id === habitId && l.date === dateStr)
+    if (!hecho) break
+    streak++
+    d.setDate(d.getDate() - 1)
+  }
+
+  return streak
+}
+
 
 export function useCalendar(user) {
 
@@ -24,7 +57,7 @@ export function useCalendar(user) {
   const [loading,   setLoading]   = useState(false)
 
 
-  /* ── Efecto: cargar todo cuando el usuario se loguea ──── */
+  /* ── Cargar todo cuando el usuario se loguea ─────────── */
   useEffect(() => {
     if (!user) {
       setEvents([])
@@ -37,11 +70,6 @@ export function useCalendar(user) {
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  /* ── fetchAll — Carga las 4 tablas en paralelo ─────────
-     
-     Promise.all ejecuta las 4 queries al mismo tiempo.
-     Es más rápido que hacerlas una por una (en serie).
-  */
   async function fetchAll() {
     setLoading(true)
     try {
@@ -71,7 +99,7 @@ export function useCalendar(user) {
 
 
   /* ════════════════════════════════════════════════════════
-     EVENTOS (events)
+     EVENTOS
      ════════════════════════════════════════════════════════ */
 
   const createEvent = useCallback(async (data) => {
@@ -81,15 +109,9 @@ export function useCalendar(user) {
         .insert({ ...data, user_id: user.id })
         .select()
         .single()
-
       if (error) throw error
-
-      /* Insertamos y re-ordenamos por fecha para mantener consistencia */
-      setEvents(prev =>
-        [...prev, ev].sort((a, b) => a.date.localeCompare(b.date))
-      )
+      setEvents(prev => [...prev, ev].sort((a, b) => a.date.localeCompare(b.date)))
       return { data: ev, error: null }
-
     } catch (err) {
       console.error('createEvent:', err.message)
       return { data: null, error: err }
@@ -97,19 +119,17 @@ export function useCalendar(user) {
   }, [user])
 
 
-  const updateEvent = useCallback(async (id, changes) => {
+  const updateEvent = useCallback(async (id, data) => {
     try {
       const { data: ev, error } = await supabase
         .from('events')
-        .update(changes)
+        .update(data)
         .eq('id', id)
         .select()
         .single()
-
       if (error) throw error
       setEvents(prev => prev.map(e => e.id === id ? ev : e))
       return { data: ev, error: null }
-
     } catch (err) {
       console.error('updateEvent:', err.message)
       return { data: null, error: err }
@@ -123,7 +143,6 @@ export function useCalendar(user) {
       if (error) throw error
       setEvents(prev => prev.filter(e => e.id !== id))
       return { error: null }
-
     } catch (err) {
       console.error('deleteEvent:', err.message)
       return { error: err }
@@ -132,7 +151,7 @@ export function useCalendar(user) {
 
 
   /* ════════════════════════════════════════════════════════
-     TAREAS DEL DÍA (daily_tasks)
+     TAREAS DIARIAS
      ════════════════════════════════════════════════════════ */
 
   const createTask = useCallback(async (data) => {
@@ -142,11 +161,9 @@ export function useCalendar(user) {
         .insert({ ...data, user_id: user.id })
         .select()
         .single()
-
       if (error) throw error
       setTasks(prev => [...prev, task])
       return { data: task, error: null }
-
     } catch (err) {
       console.error('createTask:', err.message)
       return { data: null, error: err }
@@ -154,24 +171,20 @@ export function useCalendar(user) {
   }, [user])
 
 
-  /* toggleTask: igual que toggleFavorite en useNotes —
-     invierte el booleano `completed` sin tocar nada más   */
-  const toggleTask = useCallback(async (id, currentValue) => {
+  const toggleTask = useCallback(async (id, currentCompleted) => {
     try {
       const { data: task, error } = await supabase
         .from('daily_tasks')
-        .update({ completed: !currentValue })
+        .update({ completed: !currentCompleted })
         .eq('id', id)
         .select()
         .single()
-
       if (error) throw error
       setTasks(prev => prev.map(t => t.id === id ? task : t))
-      return { data: task, error: null }
-
+      return { error: null }
     } catch (err) {
       console.error('toggleTask:', err.message)
-      return { data: null, error: err }
+      return { error: err }
     }
   }, [])
 
@@ -182,7 +195,6 @@ export function useCalendar(user) {
       if (error) throw error
       setTasks(prev => prev.filter(t => t.id !== id))
       return { error: null }
-
     } catch (err) {
       console.error('deleteTask:', err.message)
       return { error: err }
@@ -191,21 +203,20 @@ export function useCalendar(user) {
 
 
   /* ════════════════════════════════════════════════════════
-     HÁBITOS (habits)
+     HÁBITOS
      ════════════════════════════════════════════════════════ */
 
-  const createHabit = useCallback(async (data) => {
+  /* createHabit ahora acepta reward_text ─────────────────── */
+  const createHabit = useCallback(async ({ name, emoji, reward_text = '' }) => {
     try {
       const { data: habit, error } = await supabase
         .from('habits')
-        .insert({ ...data, user_id: user.id })
+        .insert({ name, emoji, reward_text, user_id: user.id })
         .select()
         .single()
-
       if (error) throw error
       setHabits(prev => [...prev, habit])
       return { data: habit, error: null }
-
     } catch (err) {
       console.error('createHabit:', err.message)
       return { data: null, error: err }
@@ -217,13 +228,9 @@ export function useCalendar(user) {
     try {
       const { error } = await supabase.from('habits').delete().eq('id', id)
       if (error) throw error
-
       setHabits(prev => prev.filter(h => h.id !== id))
-      /* Los habit_logs se borran en cascada por la FK en Supabase,
-         pero actualizamos el estado local para evitar re-fetch */
       setHabitLogs(prev => prev.filter(l => l.habit_id !== id))
       return { error: null }
-
     } catch (err) {
       console.error('deleteHabit:', err.message)
       return { error: err }
@@ -232,12 +239,15 @@ export function useCalendar(user) {
 
 
   /* ════════════════════════════════════════════════════════
-     REGISTROS DE HÁBITOS (habit_logs)
+     REGISTROS DE HÁBITOS — con detección de milestone
 
-     Lógica toggle:
-       Si existe un log para (habitId, date) → lo elimina
-       Si no existe → lo inserta
-       La tabla tiene UNIQUE(habit_id, date) para evitar duplicados
+     toggleHabitLog ahora devuelve:
+       { error, milestone, habitName, rewardText }
+
+       milestone  → número de días (7, 14, 21…) si se alcanzó
+                    null si no hay milestone o se desmarcó
+       habitName  → nombre del hábito (para mostrar en el modal)
+       rewardText → premio personalizado del hábito
      ════════════════════════════════════════════════════════ */
 
   const toggleHabitLog = useCallback(async (habitId, date) => {
@@ -246,83 +256,82 @@ export function useCalendar(user) {
         l => l.habit_id === habitId && l.date === date
       )
 
+      /* ── Desmarcar ─────────────────────────────────────── */
       if (existing) {
         const { error } = await supabase
           .from('habit_logs')
           .delete()
           .eq('id', existing.id)
-
         if (error) throw error
         setHabitLogs(prev => prev.filter(l => l.id !== existing.id))
-
-      } else {
-        const { data: log, error } = await supabase
-          .from('habit_logs')
-          .insert({ habit_id: habitId, user_id: user.id, date })
-          .select()
-          .single()
-
-        if (error) throw error
-        setHabitLogs(prev => [...prev, log])
+        return { error: null, milestone: null, habitName: null, rewardText: null }
       }
 
-      return { error: null }
+      /* ── Marcar como hecho ─────────────────────────────── */
+      const { data: log, error } = await supabase
+        .from('habit_logs')
+        .insert({ habit_id: habitId, user_id: user.id, date })
+        .select()
+        .single()
+      if (error) throw error
+
+      /* Calculamos la nueva racha con el log recién agregado */
+      const newLogs = [...habitLogs, log]
+      const streak  = calcStreak(habitId, newLogs)
+      setHabitLogs(newLogs)
+
+      /* Milestone si la racha es múltiplo de 7 (7, 14, 21…) */
+      const milestone = streak > 0 && streak % 7 === 0 ? streak : null
+      const habit     = habits.find(h => h.id === habitId)
+
+      return {
+        error:      null,
+        milestone,
+        habitName:  habit?.name  || '',
+        rewardText: habit?.reward_text || '',
+        streak,
+      }
 
     } catch (err) {
       console.error('toggleHabitLog:', err.message)
-      return { error: err }
+      return { error: err, milestone: null, habitName: null, rewardText: null }
     }
-  }, [user, habitLogs])
+  }, [user, habitLogs, habits])
+
+
+  /* ── getStreak — para usar en cualquier pantalla ──────── */
+  const getStreak = useCallback((habitId) => {
+    return calcStreak(habitId, habitLogs)
+  }, [habitLogs])
 
 
   /* ════════════════════════════════════════════════════════
      HELPERS — Filtros por fecha
-     (evitan que CalendarScreen filtre el array directamente)
      ════════════════════════════════════════════════════════ */
 
-  /* Devuelve los eventos de una fecha específica (string 'YYYY-MM-DD') */
   const getEventsForDate = useCallback((dateStr) =>
     events.filter(e => e.date === dateStr),
   [events])
 
-  /* Devuelve las tareas de una fecha específica */
   const getTasksForDate = useCallback((dateStr) =>
     tasks.filter(t => t.date === dateStr),
   [tasks])
 
-  /* Verifica si un hábito fue completado en una fecha */
   const isHabitDone = useCallback((habitId, dateStr) =>
     habitLogs.some(l => l.habit_id === habitId && l.date === dateStr),
   [habitLogs])
 
 
-  /* ── Valor retornado por el hook ──────────────────────── */
+  /* ── Retorno del hook ─────────────────────────────────── */
   return {
-    // Estado
-    events,
-    tasks,
-    habits,
-    habitLogs,
+    events, tasks, habits, habitLogs,
     calLoading: loading,
 
-    // Operaciones de eventos
-    createEvent,
-    updateEvent,
-    deleteEvent,
+    createEvent, updateEvent, deleteEvent,
+    createTask, toggleTask, deleteTask,
+    createHabit, deleteHabit, toggleHabitLog,
 
-    // Operaciones de tareas
-    createTask,
-    toggleTask,
-    deleteTask,
-
-    // Operaciones de hábitos
-    createHabit,
-    deleteHabit,
-    toggleHabitLog,
-
-    // Helpers por fecha
-    getEventsForDate,
-    getTasksForDate,
-    isHabitDone,
+    getEventsForDate, getTasksForDate, isHabitDone,
+    getStreak,        // ← nuevo Fase 4.1
   }
 }

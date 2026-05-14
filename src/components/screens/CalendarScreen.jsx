@@ -16,6 +16,7 @@
 
 import { useState } from 'react'
 import { useApp }   from '../../context/AppContext'
+import { useStats } from '../../hooks/useStats'
 
 
 /* ════════════════════════════════════════════════════════
@@ -102,7 +103,7 @@ function parseDateStr(dateStr) {
 
 export default function CalendarScreen() {
   const {
-    events, tasks, habits,
+    events, tasks, habits, habitLogs,
     createEvent, updateEvent, deleteEvent,
     createTask, toggleTask, deleteTask,
     createHabit, deleteHabit, toggleHabitLog,
@@ -123,6 +124,8 @@ export default function CalendarScreen() {
     modal = { mode: 'task',  data: {} }
     modal = { mode: 'habit', data: {} }
   */
+  const { habitStats } = useStats({ notes: [], habits, habitLogs })
+  const [reward, setReward] = useState(null)
   const [modal, setModal] = useState(null)
 
   /* ── Navegación de mes ──────────────────────────────── */
@@ -424,13 +427,24 @@ export default function CalendarScreen() {
             </div>
           ) : (
             habits.map(habit => {
-              const done = isHabitDone(habit.id, selectedDate)
+              const done   = isHabitDone(habit.id, selectedDate)
+              const stat   = habitStats.find(h => h.id === habit.id)
+              const streak = stat?.streak ?? 0
               return (
                 <div key={habit.id} className="cal-task-row">
 
                   <button
                     className={`cal-check${done ? ' cal-check--done' : ''}`}
-                    onClick={() => toggleHabitLog(habit.id, selectedDate)}
+                    onClick={async () => {
+                      const result = await toggleHabitLog(habit.id, selectedDate)
+                      if (result.milestone) {
+                        setReward({
+                          habitName:  result.habitName,
+                          rewardText: result.rewardText,
+                          streak:     result.milestone,
+                        })
+                      }
+                    }}
                     aria-label={done ? 'Desmarcar hábito' : 'Completar hábito'}
                   >
                     {done && '✓'}
@@ -442,6 +456,18 @@ export default function CalendarScreen() {
                   }}>
                     {habit.emoji} {habit.name}
                   </span>
+
+                  {/* Racha 🔥 */}
+                  {streak > 0 && (
+                    <span style={{
+                      fontSize: 12, fontWeight: 700,
+                      color: streak >= 7 ? '#f97316' : 'var(--text2)',
+                      display: 'flex', alignItems: 'center', gap: 2,
+                      marginRight: 4,
+                    }}>
+                      🔥{streak}
+                    </span>
+                  )}
 
                   <button
                     className="ibtn"
@@ -489,6 +515,16 @@ export default function CalendarScreen() {
         <HabitModal
           onSave={handleSaveHabit}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* Modal de premio 🎉 */}
+      {reward && (
+        <RewardModalCal
+          streak={reward.streak}
+          habitName={reward.habitName}
+          rewardText={reward.rewardText}
+          onClose={() => setReward(null)}
         />
       )}
 
@@ -684,14 +720,15 @@ function TaskModal({ onSave, onClose }) {
 const EMOJIS_HABITO = ['✅','💪','📚','🏃','💧','🧘','🥗','😴','✍️','🎯','🚴','🏋️','🎨','💻','🌿']
 
 function HabitModal({ onSave, onClose }) {
-  const [name,   setName]   = useState('')
-  const [emoji,  setEmoji]  = useState('✅')
-  const [saving, setSaving] = useState(false)
+  const [name,       setName]       = useState('')
+  const [emoji,      setEmoji]      = useState('✅')
+  const [rewardText, setRewardText] = useState('')
+  const [saving,     setSaving]     = useState(false)
 
   async function handleSubmit() {
     if (!name.trim()) return
     setSaving(true)
-    await onSave({ name: name.trim(), emoji })
+    await onSave({ name: name.trim(), emoji, reward_text: rewardText.trim() })
     setSaving(false)
   }
 
@@ -738,6 +775,16 @@ function HabitModal({ onSave, onClose }) {
           />
         </div>
 
+        {/* Campo de premio personalizado */}
+        <div className="fld">
+          <label className="lbl">🎁 Mi premio al completar 7 días</label>
+          <input
+            value={rewardText}
+            onChange={e => setRewardText(e.target.value)}
+            placeholder="Ej: Un café especial, ver una peli..."
+          />
+        </div>
+
         <button
           className="btn-p"
           onClick={handleSubmit}
@@ -747,6 +794,64 @@ function HabitModal({ onSave, onClose }) {
         </button>
 
       </div>
+    </div>
+  )
+}
+
+
+/* ════════════════════════════════════════════════════════
+   MODAL DE PREMIO 🎉
+   ════════════════════════════════════════════════════════ */
+function RewardModalCal({ streak, habitName, rewardText, onClose }) {
+  const emoji = streak >= 21 ? '🏆' : streak >= 14 ? '🌟' : '🎉'
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 300,
+      background: 'rgba(0,0,0,0.65)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 340,
+        background: 'var(--bg)', borderRadius: 24,
+        padding: '32px 24px', textAlign: 'center',
+        boxShadow: '0 8px 48px rgba(0,0,0,0.4)',
+        animation: 'popIn 0.25s ease',
+      }}>
+        <div style={{ fontSize: 56, marginBottom: 12, lineHeight: 1 }}>{emoji}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
+          ¡{streak} días seguidos!
+        </div>
+        <div style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600, marginBottom: 16 }}>
+          {habitName}
+        </div>
+
+        {rewardText ? (
+          <div style={{ background: 'var(--card)', borderRadius: 14, padding: '14px 16px', marginBottom: 24 }}>
+            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Tu premio
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>🎁 {rewardText}</div>
+          </div>
+        ) : (
+          <div style={{ background: 'var(--card)', borderRadius: 14, padding: '12px 16px', marginBottom: 24, fontSize: 13, color: 'var(--text2)' }}>
+            Configurá un premio en "Mi premio" al crear hábitos 🎁
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          style={{
+            width: '100%', padding: '14px 0', borderRadius: 14,
+            border: 'none', background: 'var(--accent)', color: '#fff',
+            fontSize: 15, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          ¡Sigo así! 💪
+        </button>
+      </div>
+      <style>{`@keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
     </div>
   )
 }
