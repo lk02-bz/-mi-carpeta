@@ -2,10 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/layout/TopBar.jsx                        ║
 ║                                                          ║
-║  Cambios Fase 4.1:                                       ║
-║  ✦ navTo('profile') → pushTo('profile')                  ║
-║  ✦ navTo('search')  → pushTo('search')                   ║
-║    → el botón ← del TopBar ahora funciona en ambas       ║
+║  Cambios Fix Visual:                                     ║
+║  ✦ Título "Mi Carpeta" con emoji en home                 ║
+║  ✦ Safe area ya manejada en CSS (.topbar padding-top)    ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -16,20 +15,25 @@ export default function TopBar() {
     currentFrame,
     canGoBack,
     goBack,
-    pushTo,          // ← antes era navTo, ahora pushTo para mantener el stack
+    pushTo,
     displayName,
     avatarUrl,
     user,
   } = useApp()
 
-  const esHome = currentFrame.screen === 'home'
-
+  const esHome  = currentFrame.screen === 'home'
   const inicial = (displayName || user?.email || '?').charAt(0).toUpperCase()
+
+  /* Título: en home mostramos el nombre de la app con emoji */
+  function getTitulo() {
+    if (esHome) return '📚 Mi Carpeta'
+    return currentFrame.title
+  }
 
   return (
     <div className="topbar">
 
-      {/* Izquierda: botón atrás — visible solo cuando hay stack */}
+      {/* ← Botón atrás */}
       <button
         className="ibtn"
         style={{ visibility: canGoBack ? 'visible' : 'hidden' }}
@@ -41,13 +45,14 @@ export default function TopBar() {
         </svg>
       </button>
 
-      <span className="topbar-title">{currentFrame.title}</span>
+      {/* Título centrado */}
+      <span className="topbar-title">{getTitulo()}</span>
 
       {/* Derecha: avatar (home) o lupa (resto) */}
       {esHome ? (
         <button
           className="topbar-avatar"
-          onClick={() => pushTo('profile', { title: 'Perfil' })}  // ← pushTo
+          onClick={() => pushTo('profile', { title: 'Perfil' })}
           aria-label="Ir al perfil"
         >
           {avatarUrl ? (
@@ -59,7 +64,7 @@ export default function TopBar() {
       ) : (
         <button
           className="ibtn"
-          onClick={() => pushTo('search', { title: 'Buscar' })}   // ← pushTo
+          onClick={() => pushTo('search', { title: 'Buscar' })}
           aria-label="Buscar"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

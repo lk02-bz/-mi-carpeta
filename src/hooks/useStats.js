@@ -2,10 +2,15 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/hooks/useStats.js                                   ║
 ║                                                          ║
-║  Calcula métricas a partir de los datos ya en memoria.   ║
-║  NO hace llamadas a Supabase.                            ║
-║                                                          ║
-║  Fase 3.1.A — Estadísticas                               ║
+║  Cambios Fase 6:                                         ║
+║  ✦ localDateStr() — fix timezone bug (UTC-3 Argentina)   ║
+║  ✦ getLast7Days() — mismo fix                            ║
+║  ✦ taskStats — métricas de tareas para useInsights       ║
+║    · promedioTareasPorDía                                ║
+║    · porcentajeCompletadasEstaSemana                     ║
+║    · diasConSobrecarga (5+ tareas pendientes)            ║
+║    · diasVacios (0 tareas creadas)                       ║
+║    · tareasMovidasRepetidas (misma tarea movida N veces)  ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -13,32 +18,43 @@ import { useMemo } from 'react'
 
 
 /* ════════════════════════════════════════════════════════
-   FUNCIONES PURAS — definidas fuera del hook
-
-   ¿Por qué fuera del hook?
-   - Son funciones independientes que no necesitan estado de React.
-   - Al estar fuera, no se redefinen en cada render.
-   - Son más fáciles de probar (unit testing) y reutilizar.
+   HELPERS DE FECHA — usan getFullYear/Month/Date
+   para evitar el bug de timezone en Argentina (UTC-3).
    ════════════════════════════════════════════════════════ */
 
 /**
+ * localDateStr(offsetDays)
+ * Devuelve la fecha local en formato 'YYYY-MM-DD'.
+ *   offsetDays = 0  → hoy
+ *   offsetDays = 1  → ayer
+ */
+function localDateStr(offsetDays = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() - offsetDays)
+  const y   = d.getFullYear()
+  const m   = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+
+/**
  * calcStreak(habitId, habitLogs)
- * Recorre días hacia atrás desde hoy.
- * Cuando encuentra un día sin log, para y devuelve la cantidad de días consecutivos.
- *
- * Ejemplo: si completaste Lunes + Martes + Miércoles → streak = 3
+ * Racha actual: días consecutivos hacia atrás desde hoy.
  */
 function calcStreak(habitId, habitLogs) {
   let streak = 0
   const d = new Date()
 
-  /* Límite de 365 días: evita bucles infinitos si hay datos corruptos */
   while (streak < 365) {
-    const dateStr = d.toISOString().split('T')[0]   // 'YYYY-MM-DD'
-    const hecho   = habitLogs.some(l => l.habit_id === habitId && l.date === dateStr)
-    if (!hecho) break
+    const y   = d.getFullYear()
+    const m   = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${day}`
+
+    if (!habitLogs.some(l => l.habit_id === habitId && l.date === dateStr)) break
     streak++
-    d.setDate(d.getDate() - 1)   // retrocede un día
+    d.setDate(d.getDate() - 1)
   }
 
   return streak
@@ -47,26 +63,43 @@ function calcStreak(habitId, habitLogs) {
 
 /**
  * getLast7Days(habitId, habitLogs)
- * Devuelve un array de los últimos 7 días con { dateStr, done }.
- * Orden: de más antiguo (índice 0) a hoy (índice 6).
- *
- * Se usa para los puntitos de los últimos 7 días en cada hábito.
+ * Array de los últimos 7 días con { dateStr, done, isRecovered }.
+ * Orden: más antiguo (índice 0) → hoy (índice 6).
  */
 function getLast7Days(habitId, habitLogs) {
   const days = []
-
   for (let i = 6; i >= 0; i--) {
-    const d = new Date()
+    const d   = new Date()
     d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().split('T')[0]
-
+    const y   = d.getFullYear()
+    const m   = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${day}`
+    const log = habitLogs.find(l => l.habit_id === habitId && l.date === dateStr)
     days.push({
       dateStr,
-      done: habitLogs.some(l => l.habit_id === habitId && l.date === dateStr),
+      done:        !!log,
+      isRecovered: log?.is_recovered ?? false,
     })
   }
-
   return days
+}
+
+
+/**
+ * getMondayOfWeek(weeksAgo)
+ * Devuelve el lunes de la semana correspondiente.
+ *   weeksAgo = 0 → esta semana
+ *   weeksAgo = 1 → semana pasada
+ */
+function getMondayOfWeek(weeksAgo = 0) {
+  const today      = new Date()
+  const dayOfWeek  = today.getDay()                         // 0=Dom, 1=Lun…
+  const diffToMon  = dayOfWeek === 0 ? -6 : 1 - dayOfWeek  // ajuste al lunes
+  const monday     = new Date(today)
+  monday.setDate(today.getDate() + diffToMon - weeksAgo * 7)
+  monday.setHours(0, 0, 0, 0)
+  return monday
 }
 
 
@@ -75,37 +108,25 @@ function getLast7Days(habitId, habitLogs) {
    ════════════════════════════════════════════════════════ */
 
 /**
- * useStats({ notes, habits, habitLogs })
+ * useStats({ notes, habits, habitLogs, tasks })
  *
- * Recibe los arrays del contexto (ya cargados) y devuelve métricas
- * calculadas con useMemo para no recalcular en cada render.
+ * Recibe los arrays del contexto y devuelve métricas calculadas.
+ * NO hace llamadas a Supabase.
  *
- * @param {Array} notes      - Todos los apuntes del usuario
- * @param {Array} habits     - Todos los hábitos
- * @param {Array} habitLogs  - Todos los registros de hábitos completados
+ * @param {Array} notes      - Todos los apuntes
+ * @param {Array} habits     - Hábitos activos (no archivados)
+ * @param {Array} habitLogs  - Registros de hábitos completados
+ * @param {Array} tasks      - Todas las tareas diarias
  */
-export function useStats({ notes, habits, habitLogs }) {
+export function useStats({ notes, habits, habitLogs, tasks = [] }) {
 
-  /* ── Fecha de hoy en formato 'YYYY-MM-DD' ─────────────
-     Calculada UNA sola vez al montar el componente.
-     No cambia durante la sesión (razonable para una app de notas).
-  */
-  const todayStr = useMemo(
-    () => new Date().toISOString().split('T')[0],
-    []
-  )
+  const todayStr = useMemo(() => localDateStr(0), [])
 
 
-  /* ── Estadísticas por hábito ───────────────────────────
-     Por cada hábito calculamos:
-       - streak:    racha actual en días
-       - total:     veces completado en toda la historia
-       - doneToday: ¿fue completado hoy?
-       - last7:     array de los últimos 7 días
-  */
+  /* ── Estadísticas por hábito ───────────────────────────── */
   const habitStats = useMemo(() =>
     habits.map(h => ({
-      ...h,                                          // id, name, emoji, user_id…
+      ...h,
       streak:    calcStreak(h.id, habitLogs),
       total:     habitLogs.filter(l => l.habit_id === h.id).length,
       doneToday: habitLogs.some(l => l.habit_id === h.id && l.date === todayStr),
@@ -114,31 +135,11 @@ export function useStats({ notes, habits, habitLogs }) {
   [habits, habitLogs, todayStr])
 
 
-  /* ── Apuntes por semana — últimas 4 semanas ────────────
-     Para el gráfico de barras.
-     Calcula cuántos apuntes fueron CREADOS en cada semana.
-
-     Lógica:
-       - Semana 0 = semana actual (de lunes a hoy)
-       - Semana 1 = semana pasada
-       - etc.
-
-     setDay(1) = lunes:  JavaScript usa 0=Dom, 1=Lun … 6=Sáb
-  */
+  /* ── Apuntes por semana — últimas 4 semanas ────────────── */
   const notesByWeek = useMemo(() => {
-    const today = new Date()
     const weeks = []
-
     for (let w = 3; w >= 0; w--) {
-
-      /* Lunes de la semana que corresponde */
-      const monday = new Date(today)
-      const dayOfWeek = today.getDay()                    // 0=Dom, 1=Lun…
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-      monday.setDate(today.getDate() + diffToMonday - w * 7)
-      monday.setHours(0, 0, 0, 0)
-
-      /* Domingo de esa semana */
+      const monday = getMondayOfWeek(w)
       const sunday = new Date(monday)
       sunday.setDate(monday.getDate() + 6)
       sunday.setHours(23, 59, 59, 999)
@@ -148,42 +149,105 @@ export function useStats({ notes, habits, habitLogs }) {
         return d >= monday && d <= sunday
       }).length
 
-      /* Etiqueta para el eje X del gráfico */
       const label = w === 0 ? 'Esta sem.'
                   : w === 1 ? 'Sem. ant.'
                   : `Hace ${w} sem.`
 
       weeks.push({ label, count })
     }
-
     return weeks
   }, [notes])
 
 
-  /* ── Totales rápidos ────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════
+     MÉTRICAS DE TAREAS
+     Usadas por useInsights para detectar patrones problemáticos.
+     ══════════════════════════════════════════════════════════ */
+  const taskStats = useMemo(() => {
 
-  const totalNotes = notes.length
+    if (tasks.length === 0) {
+      return {
+        promedioTareasPorDia:           0,
+        porcentajeCompletadasEstaSemana: 0,
+        diasConSobrecarga:              [],
+        diasVacios:                     0,
+        tareasMovidasRepetidas:         [],
+      }
+    }
 
-  /* Cuántos hábitos distintos se completaron hoy */
+    /* ── Rango de análisis: últimos 7 días ──────────────── */
+    const dias7 = Array.from({ length: 7 }, (_, i) => localDateStr(i)).reverse()
+    // dias7[0] = hace 6 días, dias7[6] = hoy
+
+    /* ── Tareas de esta semana (lunes → hoy) ────────────── */
+    const lunesEsta  = getMondayOfWeek(0)
+    const tareasEsta = tasks.filter(t => {
+      if (!t.date) return false
+      const d = new Date(t.date + 'T00:00:00')
+      return d >= lunesEsta
+    })
+    const creadasEsta   = tareasEsta.length
+    const completasEsta = tareasEsta.filter(t => t.completed).length
+    const porcentajeCompletadasEstaSemana = creadasEsta > 0
+      ? Math.round((completasEsta / creadasEsta) * 100)
+      : 0
+
+    /* ── Promedio de tareas por día (últimos 7 días) ─────── */
+    const tareasSemana = tasks.filter(t => t.date && dias7.includes(t.date))
+    const promedioTareasPorDia = parseFloat(
+      (tareasSemana.length / 7).toFixed(1)
+    )
+
+    /* ── Días con sobrecarga: 5+ tareas pendientes ──────── */
+    const diasConSobrecarga = dias7.filter(dateStr => {
+      const pendientes = tasks.filter(
+        t => t.date === dateStr && !t.completed
+      ).length
+      return pendientes >= 5
+    })
+
+    /* ── Días vacíos: sin ninguna tarea creada ──────────── */
+    const diasVacios = dias7.filter(dateStr =>
+      !tasks.some(t => t.date === dateStr)
+    ).length
+
+    /* ── Tareas movidas repetidamente ───────────────────────
+       Detecta tareas que tienen moved_from_date definido
+       y cuyo moved_from_date es diferente a su fecha actual.
+       Si el usuario lleva moviendo la misma tarea varios días
+       sin completarla, useInsights lo señala.
+    */
+    const tareasMovidasRepetidas = tasks.filter(t =>
+      t.moved_from_date &&
+      !t.completed
+    )
+
+    return {
+      promedioTareasPorDia,
+      porcentajeCompletadasEstaSemana,
+      diasConSobrecarga,   // array de fechas 'YYYY-MM-DD'
+      diasVacios,          // número
+      tareasMovidasRepetidas,
+    }
+  }, [tasks])
+
+
+  /* ── Totales rápidos ────────────────────────────────────── */
+  const totalNotes      = notes.length
   const habitsDoneToday = habitLogs.filter(l => l.date === todayStr).length
-
-  /* La racha más larga actual entre todos los hábitos */
-  const bestStreak = habitStats.length > 0
+  const bestStreak      = habitStats.length > 0
     ? Math.max(...habitStats.map(h => h.streak))
     : 0
-
-
-  /* ── Habit con mejor racha (para useInsights) ───────── */
-  const bestHabit = habitStats.reduce(
+  const bestHabit       = habitStats.reduce(
     (best, h) => h.streak > best.streak ? h : best,
     { streak: 0, name: '' }
   )
 
-  /* ── Valor retornado por el hook ────────────────────── */
   return {
     todayStr,
     habitStats,
     notesByWeek,
+    taskStats,      // ← nuevo
     totalNotes,
     habitsDoneToday,
     bestStreak,

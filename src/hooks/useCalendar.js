@@ -2,11 +2,16 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/hooks/useCalendar.js                                ║
 ║                                                          ║
-║  Cambios Fase 4.1:                                       ║
-║  ✦ calcStreak() helper local (con timezone correcta)     ║
-║  ✦ createHabit acepta reward_text                        ║
-║  ✦ toggleHabitLog devuelve { milestone } para premios    ║
-║  ✦ getStreak(habitId) expuesto para usar en pantallas    ║
+║  Cambios Fase 6:                                         ║
+║  ✦ localDateStr(offsetDays) — ahora acepta offset        ║
+║  ✦ calcStreakUpTo() — racha hasta un día específico       ║
+║  ✦ moveTaskToToday — mueve tarea de ayer con historial   ║
+║  ✦ archiveHabit — archiva hábito + guarda logro          ║
+║  ✦ recoverStreak — recupera racha perdida (⚡)            ║
+║  ✦ isRecoverable — ¿vale la pena recuperar?              ║
+║  ✦ toggleHabitLog — devuelve consolidation a los 30 días ║
+║  ✦ achievements — registros de habit_achievements        ║
+║  ✦ habits — solo hábitos activos (no archivados)         ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -14,31 +19,41 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 
-/* ── Helper: fecha local como 'YYYY-MM-DD' ─────────────────
-   Usamos getFullYear/Month/Date en vez de toISOString()
-   porque toISOString() convierte a UTC, dando el día
-   equivocado a las 22-23hs en Argentina (UTC-3).
-*/
-function localDateStr(date = new Date()) {
-  const y   = date.getFullYear()
-  const m   = String(date.getMonth() + 1).padStart(2, '0')
-  const d   = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+/* ════════════════════════════════════════════════════════
+   HELPERS DE FECHA
+   Todos usan getFullYear/Month/Date (no toISOString)
+   para evitar el bug de timezone en Argentina (UTC-3).
+   ════════════════════════════════════════════════════════ */
+
+/**
+ * localDateStr(offsetDays)
+ * Devuelve la fecha local en formato 'YYYY-MM-DD'.
+ *   offsetDays = 0  → hoy
+ *   offsetDays = 1  → ayer
+ *   offsetDays = -1 → mañana
+ */
+function localDateStr(offsetDays = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() - offsetDays)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 
-/* ── Helper: calcular racha actual de un hábito ────────────
-   Recorre días hacia atrás desde hoy.
-   Para cuando encuentra un día sin log.
-   Devuelve cantidad de días consecutivos.
-*/
+/* ── Helper: racha actual desde hoy hacia atrás ────────── */
 function calcStreak(habitId, habitLogs) {
   let streak = 0
-  const d    = new Date()
+  const d = new Date()
 
   while (streak < 365) {
-    const dateStr = localDateStr(d)
-    const hecho   = habitLogs.some(l => l.habit_id === habitId && l.date === dateStr)
+    const y   = d.getFullYear()
+    const m   = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const dateStr = `${y}-${m}-${day}`
+
+    const hecho = habitLogs.some(l => l.habit_id === habitId && l.date === dateStr)
     if (!hecho) break
     streak++
     d.setDate(d.getDate() - 1)
@@ -48,13 +63,51 @@ function calcStreak(habitId, habitLogs) {
 }
 
 
+/* ── Helper: racha acumulada justo ANTES de una fecha ─────
+   Útil para saber cuántos días consecutivos tenía
+   un hábito antes de que se rompiera la racha.
+
+   Ejemplo: si el usuario no marcó ayer ni hoy,
+   calcStreakUpTo(id, logs, 'ayer') devuelve los días
+   consecutivos que tenía antes de ayer.
+*/
+function calcStreakUpTo(habitId, habitLogs, beforeDateStr) {
+  // Empezamos desde el día anterior a beforeDateStr
+  const [y, mo, da] = beforeDateStr.split('-').map(Number)
+  const start = new Date(y, mo - 1, da)
+  start.setDate(start.getDate() - 1)   // un día antes de beforeDateStr
+
+  let streak = 0
+  const d = new Date(start)
+
+  while (streak < 365) {
+    const cy  = d.getFullYear()
+    const cm  = String(d.getMonth() + 1).padStart(2, '0')
+    const cd  = String(d.getDate()).padStart(2, '0')
+    const dateStr = `${cy}-${cm}-${cd}`
+
+    const hecho = habitLogs.some(l => l.habit_id === habitId && l.date === dateStr)
+    if (!hecho) break
+    streak++
+    d.setDate(d.getDate() - 1)
+  }
+
+  return streak
+}
+
+
+/* ════════════════════════════════════════════════════════
+   HOOK PRINCIPAL
+   ════════════════════════════════════════════════════════ */
+
 export function useCalendar(user) {
 
-  const [events,    setEvents]    = useState([])
-  const [tasks,     setTasks]     = useState([])
-  const [habits,    setHabits]    = useState([])
-  const [habitLogs, setHabitLogs] = useState([])
-  const [loading,   setLoading]   = useState(false)
+  const [events,       setEvents]       = useState([])
+  const [tasks,        setTasks]        = useState([])
+  const [habits,       setHabits]       = useState([])
+  const [habitLogs,    setHabitLogs]    = useState([])
+  const [achievements, setAchievements] = useState([])
+  const [loading,      setLoading]      = useState(false)
 
 
   /* ── Cargar todo cuando el usuario se loguea ─────────── */
@@ -64,6 +117,7 @@ export function useCalendar(user) {
       setTasks([])
       setHabits([])
       setHabitLogs([])
+      setAchievements([])
       return
     }
     fetchAll()
@@ -73,22 +127,26 @@ export function useCalendar(user) {
   async function fetchAll() {
     setLoading(true)
     try {
-      const [evRes, taskRes, habitRes, logRes] = await Promise.all([
+      const [evRes, taskRes, habitRes, logRes, achRes] = await Promise.all([
         supabase.from('events').select('*').order('date').order('time', { nullsFirst: true }),
         supabase.from('daily_tasks').select('*').order('created_at'),
         supabase.from('habits').select('*').order('created_at'),
         supabase.from('habit_logs').select('*'),
+        supabase.from('habit_achievements').select('*').order('achieved_at', { ascending: false }),
       ])
 
       if (evRes.error)    throw evRes.error
       if (taskRes.error)  throw taskRes.error
       if (habitRes.error) throw habitRes.error
       if (logRes.error)   throw logRes.error
+      if (achRes.error)   throw achRes.error
 
       setEvents(evRes.data)
       setTasks(taskRes.data)
-      setHabits(habitRes.data)
+      // habits solo expone los activos — los archivados se ven en achievements
+      setHabits(habitRes.data.filter(h => !h.is_archived))
       setHabitLogs(logRes.data)
+      setAchievements(achRes.data)
 
     } catch (err) {
       console.error('useCalendar — fetchAll:', err.message)
@@ -202,11 +260,49 @@ export function useCalendar(user) {
   }, [])
 
 
+  /* ── moveTaskToToday ──────────────────────────────────────
+     Mueve una tarea de cualquier fecha pasada a hoy.
+     Guarda la fecha original en moved_from_date para el análisis.
+     Usada por el modal "Tareas de ayer sin completar".
+  */
+  const moveTaskToToday = useCallback(async (taskId) => {
+    const today = localDateStr(0)
+    // Buscamos la tarea para guardar su fecha original
+    const task = tasks.find(t => t.id === taskId)
+    const originalDate = task?.date ?? null
+
+    try {
+      const { data: updated, error } = await supabase
+        .from('daily_tasks')
+        .update({ date: today, moved_from_date: originalDate })
+        .eq('id', taskId)
+        .select()
+        .single()
+      if (error) throw error
+      setTasks(prev => prev.map(t => t.id === taskId ? updated : t))
+      return { error: null }
+    } catch (err) {
+      console.error('moveTaskToToday:', err.message)
+      return { error: err }
+    }
+  }, [tasks])
+
+
+  /* ── getYesterdayPendingTasks ─────────────────────────────
+     Devuelve las tareas de ayer que quedaron sin completar.
+     No hace llamada a Supabase — filtra el estado local.
+     Usada en HomeScreen para el modal de aviso.
+  */
+  const getYesterdayPendingTasks = useCallback(() => {
+    const yesterday = localDateStr(1)
+    return tasks.filter(t => t.date === yesterday && !t.completed)
+  }, [tasks])
+
+
   /* ════════════════════════════════════════════════════════
      HÁBITOS
      ════════════════════════════════════════════════════════ */
 
-  /* createHabit ahora acepta reward_text ─────────────────── */
   const createHabit = useCallback(async ({ name, emoji, reward_text = '' }) => {
     try {
       const { data: habit, error } = await supabase
@@ -238,18 +334,77 @@ export function useCalendar(user) {
   }, [])
 
 
+  /* ── archiveHabit ─────────────────────────────────────────
+     Archiva un hábito con 30+ días de racha.
+     1. Inserta un registro en habit_achievements.
+     2. Marca el hábito como is_archived = true en habits.
+     3. Lo saca del estado local (ya no aparece en activos).
+
+     Llamada desde el modal de consolidación en HomeScreen.
+  */
+  const archiveHabit = useCallback(async (habitId) => {
+    const habit  = habits.find(h => h.id === habitId)
+    if (!habit) return { error: new Error('Hábito no encontrado') }
+
+    const streak = calcStreak(habitId, habitLogs)
+    const today  = localDateStr(0)
+
+    try {
+      /* Paso 1: guardar el logro */
+      const { error: achError } = await supabase
+        .from('habit_achievements')
+        .insert({
+          user_id:        user.id,
+          habit_id:       habitId,
+          habit_name:     habit.name,
+          habit_emoji:    habit.emoji || '',
+          streak_reached: streak,
+          achieved_at:    today,
+        })
+      if (achError) throw achError
+
+      /* Paso 2: marcar como archivado */
+      const { error: habitError } = await supabase
+        .from('habits')
+        .update({ is_archived: true })
+        .eq('id', habitId)
+      if (habitError) throw habitError
+
+      /* Paso 3: actualizar estado local */
+      setHabits(prev => prev.filter(h => h.id !== habitId))
+      setAchievements(prev => [{
+        habit_id:       habitId,
+        habit_name:     habit.name,
+        habit_emoji:    habit.emoji || '',
+        streak_reached: streak,
+        achieved_at:    today,
+        user_id:        user.id,
+      }, ...prev])
+
+      return { error: null }
+    } catch (err) {
+      console.error('archiveHabit:', err.message)
+      return { error: err }
+    }
+  }, [user, habits, habitLogs])
+
+
   /* ════════════════════════════════════════════════════════
-     REGISTROS DE HÁBITOS — con detección de milestone
-
-     toggleHabitLog ahora devuelve:
-       { error, milestone, habitName, rewardText }
-
-       milestone  → número de días (7, 14, 21…) si se alcanzó
-                    null si no hay milestone o se desmarcó
-       habitName  → nombre del hábito (para mostrar en el modal)
-       rewardText → premio personalizado del hábito
+     REGISTROS DE HÁBITOS
      ════════════════════════════════════════════════════════ */
 
+  /* ── toggleHabitLog ────────────────────────────────────────
+     Devuelve:
+       { error, milestone, consolidation, habitName, rewardText, streak }
+
+       milestone    → número si la racha es múltiplo de 7 (7,14,21,28…)
+                      null si no hay milestone o si se desmarcó
+       consolidation → true si la racha llega exactamente a 30 días
+                      (independiente del milestone)
+       habitName    → nombre del hábito
+       rewardText   → premio personalizado
+       streak       → racha resultante
+  */
   const toggleHabitLog = useCallback(async (habitId, date) => {
     try {
       const existing = habitLogs.find(
@@ -264,7 +419,7 @@ export function useCalendar(user) {
           .eq('id', existing.id)
         if (error) throw error
         setHabitLogs(prev => prev.filter(l => l.id !== existing.id))
-        return { error: null, milestone: null, habitName: null, rewardText: null }
+        return { error: null, milestone: null, consolidation: false, habitName: null, rewardText: null, streak: 0 }
       }
 
       /* ── Marcar como hecho ─────────────────────────────── */
@@ -275,28 +430,81 @@ export function useCalendar(user) {
         .single()
       if (error) throw error
 
-      /* Calculamos la nueva racha con el log recién agregado */
       const newLogs = [...habitLogs, log]
       const streak  = calcStreak(habitId, newLogs)
       setHabitLogs(newLogs)
 
-      /* Milestone si la racha es múltiplo de 7 (7, 14, 21…) */
-      const milestone = streak > 0 && streak % 7 === 0 ? streak : null
-      const habit     = habits.find(h => h.id === habitId)
+      const milestone    = streak > 0 && streak % 7 === 0 ? streak : null
+      // Consolidación: exactamente 30 días (el momento clave de archivar)
+      const consolidation = streak === 30
+      const habit        = habits.find(h => h.id === habitId)
 
       return {
-        error:      null,
+        error: null,
         milestone,
-        habitName:  habit?.name  || '',
+        consolidation,
+        habitName:  habit?.name        || '',
         rewardText: habit?.reward_text || '',
         streak,
       }
 
     } catch (err) {
       console.error('toggleHabitLog:', err.message)
-      return { error: err, milestone: null, habitName: null, rewardText: null }
+      return { error: err, milestone: null, consolidation: false, habitName: null, rewardText: null, streak: 0 }
     }
   }, [user, habitLogs, habits])
+
+
+  /* ── recoverStreak ────────────────────────────────────────
+     Marca el hábito como hecho HOY con is_recovered = true.
+     Solo actúa si el hábito no fue marcado hoy todavía.
+     Usado por el botón "⚡ Recuperar racha" en HomeScreen.
+  */
+  const recoverStreak = useCallback(async (habitId) => {
+    const today    = localDateStr(0)
+    const yaHecho  = habitLogs.some(l => l.habit_id === habitId && l.date === today)
+    if (yaHecho) return { error: null, alreadyDone: true }
+
+    try {
+      const { data: log, error } = await supabase
+        .from('habit_logs')
+        .insert({ habit_id: habitId, user_id: user.id, date: today, is_recovered: true })
+        .select()
+        .single()
+      if (error) throw error
+      setHabitLogs(prev => [...prev, log])
+      return { error: null, alreadyDone: false }
+    } catch (err) {
+      console.error('recoverStreak:', err.message)
+      return { error: err }
+    }
+  }, [user, habitLogs])
+
+
+  /* ── isRecoverable ────────────────────────────────────────
+     Devuelve true si vale la pena ofrecer "Recuperar racha".
+     Condiciones:
+       1. El hábito NO fue marcado hoy.
+       2. El hábito NO fue marcado ayer (la racha ya se rompió).
+       3. La racha que tenía antes de ayer era >= 7 días.
+
+     Si la racha previa era menor a 7 días no tiene sentido
+     mostrar el botón de recuperación.
+  */
+  const isRecoverable = useCallback((habitId) => {
+    const today     = localDateStr(0)
+    const yesterday = localDateStr(1)
+
+    const doneToday     = habitLogs.some(l => l.habit_id === habitId && l.date === today)
+    const doneYesterday = habitLogs.some(l => l.habit_id === habitId && l.date === yesterday)
+
+    if (doneToday)     return false   // ya lo hizo hoy → no aplica
+    if (doneYesterday) return false   // lo hizo ayer → racha intacta
+
+    // ¿Cuántos días consecutivos tenía hasta antes de ayer?
+    const preBreakStreak = calcStreakUpTo(habitId, habitLogs, yesterday)
+    return preBreakStreak >= 7
+  }, [habitLogs])
 
 
   /* ── getStreak — para usar en cualquier pantalla ──────── */
@@ -325,13 +533,20 @@ export function useCalendar(user) {
   /* ── Retorno del hook ─────────────────────────────────── */
   return {
     events, tasks, habits, habitLogs,
+    achievements,       // ← nuevo: logros archivados
     calLoading: loading,
 
     createEvent, updateEvent, deleteEvent,
     createTask, toggleTask, deleteTask,
     createHabit, deleteHabit, toggleHabitLog,
 
+    moveTaskToToday,            // ← nuevo
+    getYesterdayPendingTasks,   // ← nuevo
+    archiveHabit,               // ← nuevo
+    recoverStreak,              // ← nuevo
+    isRecoverable,              // ← nuevo
+
     getEventsForDate, getTasksForDate, isHabitDone,
-    getStreak,        // ← nuevo Fase 4.1
+    getStreak,
   }
 }

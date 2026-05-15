@@ -1,12 +1,11 @@
 /*
 ╔══════════════════════════════════════════════════════════╗
-║  src/components/screens/AuthScreen.jsx — Login/Registro  ║
+║  src/components/screens/AuthScreen.jsx                   ║
 ║                                                          ║
-║  Esta pantalla es la PUERTA de entrada a la app.         ║
-║  Si el usuario no está logueado, ve esto.                ║
-║  Si se loguea con éxito, Supabase emite un evento que    ║
-║  AppContext escucha y actualiza user → la app muestra     ║
-║  el contenido principal automáticamente.                 ║
+║  Cambios Fase 5:                                         ║
+║  ✦ Identidad visual — logo, nombre, frase motivacional   ║
+║  ✦ Diseño más limpio y expresivo                         ║
+║  ✦ Lógica sin cambios (misma funcionalidad de siempre)   ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -14,68 +13,34 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function AuthScreen() {
-  /*
-    mode: controla si mostramos el formulario de login o de registro.
-    Con un solo booleano o string podemos reutilizar el mismo formulario
-    para ambos casos, cambiando solo el texto y la acción.
-  */
-  const [mode,     setMode]     = useState('login') // 'login' | 'register'
+  const [mode,     setMode]     = useState('login')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error,    setError]    = useState('')      // Mensaje de error visible al usuario
-  const [success,  setSuccess]  = useState('')      // Mensaje de éxito (registro)
-  const [loading,  setLoading]  = useState(false)   // Deshabilita el botón mientras espera
+  const [error,    setError]    = useState('')
+  const [success,  setSuccess]  = useState('')
+  const [loading,  setLoading]  = useState(false)
 
-  /*
-    handleSubmit — Maneja el envío del formulario
-    
-    async/await: como las llamadas a Supabase son asíncronas (necesitan
-    ir al servidor y esperar respuesta), usamos async/await para
-    escribir el código de forma secuencial y legible.
-    
-    e.preventDefault() evita que el formulario recargue la página
-    (el comportamiento HTML por defecto que no queremos en una SPA).
-  */
   async function handleSubmit(e) {
     e.preventDefault()
-    setError('')    // Limpia error anterior
-    setSuccess('')  // Limpia éxito anterior
+    setError('')
+    setSuccess('')
     setLoading(true)
-
     try {
       if (mode === 'login') {
-        // ── MODO LOGIN ──────────────────────────────────────
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        // Si no hay error, onAuthStateChange en AppContext detecta la nueva
-        // sesión y actualiza user → el componente App renderiza la app.
-        // No necesitamos hacer nada más acá.
-
       } else {
-        // ── MODO REGISTRO ───────────────────────────────────
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
+        const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        // Supabase envía un email de confirmación por defecto.
-        // Podés desactivar esto en: Dashboard → Auth → Settings → Disable email confirmations
         setSuccess('¡Cuenta creada! Revisá tu email para confirmar, luego iniciá sesión.')
       }
-
     } catch (err) {
-      // translateError convierte los mensajes de error (en inglés) al español
       setError(translateError(err.message))
     } finally {
-      // finally se ejecuta SIEMPRE (haya error o no)
       setLoading(false)
     }
   }
 
-  // Alterna entre login y registro, limpiando mensajes previos
   function toggleMode() {
     setMode(m => m === 'login' ? 'register' : 'login')
     setError('')
@@ -83,28 +48,85 @@ export default function AuthScreen() {
   }
 
   return (
-    /*
-      La pantalla de auth tiene su propio div#app para ocupar toda la pantalla.
-      Usamos flexbox para centrar verticalmente el formulario.
-    */
-    <div id="app" style={{ justifyContent: 'center' }}>
-      <div className="cnt" style={{ width: '100%' }}>
+    <div style={{
+      minHeight: '100dvh',
+      background: 'var(--bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px 20px',
+    }}>
 
-        {/* ── Encabezado ── */}
-        <div style={{ marginBottom: 32 }}>
-          <p className="greet-name">Mi Carpeta 📚</p>
-          <p className="greet-sub">
-            {mode === 'login'
-              ? 'Iniciá sesión para continuar'
-              : 'Creá tu cuenta gratis'}
-          </p>
+      {/* ══════════════════════════════════════════════════
+          HERO — identidad visual
+          ══════════════════════════════════════════════════ */}
+      <div style={{ textAlign: 'center', marginBottom: 40 }}>
+
+        {/* Logo */}
+        <div style={{
+          width: 80, height: 80,
+          borderRadius: 22,
+          background: 'var(--accent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 38,
+          margin: '0 auto 18px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        }}>
+          📚
         </div>
 
-        {/* ── Formulario ── */}
+        {/* Nombre */}
+        <h1 style={{
+          fontSize: 30,
+          fontWeight: 800,
+          color: 'var(--text)',
+          letterSpacing: '-0.02em',
+          marginBottom: 8,
+        }}>
+          Mi Carpeta
+        </h1>
+
+        {/* Frase motivacional */}
+        <p style={{
+          fontSize: 14,
+          color: 'var(--text2)',
+          lineHeight: 1.5,
+          maxWidth: 260,
+          margin: '0 auto',
+        }}>
+          {mode === 'login'
+            ? 'Tu espacio personal para organizarte y crecer cada día.'
+            : 'Empezá hoy a construir tus hábitos y metas.'}
+        </p>
+
+      </div>
+
+
+      {/* ══════════════════════════════════════════════════
+          FORMULARIO
+          ══════════════════════════════════════════════════ */}
+      <div style={{
+        width: '100%',
+        maxWidth: 380,
+        background: 'var(--card)',
+        borderRadius: 20,
+        padding: '28px 24px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+      }}>
+
+        {/* Título del formulario */}
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: 'var(--text)' }}>
+          {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+        </div>
+
         <form onSubmit={handleSubmit}>
 
-          <div className="fld">
-            <label className="lbl">Email</label>
+          {/* Email */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Email
+            </label>
             <input
               type="email"
               value={email}
@@ -113,11 +135,22 @@ export default function AuthScreen() {
               required
               autoComplete="email"
               autoCapitalize="none"
+              style={{
+                width: '100%', padding: '12px 14px',
+                borderRadius: 10,
+                border: '1.5px solid var(--border, rgba(128,128,128,0.2))',
+                background: 'var(--bg)',
+                color: 'var(--text)', fontSize: 15,
+                outline: 'none', boxSizing: 'border-box',
+              }}
             />
           </div>
 
-          <div className="fld">
-            <label className="lbl">Contraseña</label>
+          {/* Contraseña */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Contraseña
+            </label>
             <input
               type="password"
               value={password}
@@ -126,81 +159,91 @@ export default function AuthScreen() {
               required
               minLength={6}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              style={{
+                width: '100%', padding: '12px 14px',
+                borderRadius: 10,
+                border: '1.5px solid var(--border, rgba(128,128,128,0.2))',
+                background: 'var(--bg)',
+                color: 'var(--text)', fontSize: 15,
+                outline: 'none', boxSizing: 'border-box',
+              }}
             />
           </div>
 
-          {/* ── Mensajes de error o éxito ── */}
+          {/* Error */}
           {error && (
             <div style={{
-              color: 'var(--danger)',
-              fontSize: 13,
-              marginBottom: 12,
-              padding: '10px 12px',
-              background: 'rgba(192,57,43,0.08)',
-              borderRadius: 'var(--radius-sm)',
+              color: '#ef4444', fontSize: 13, marginBottom: 14,
+              padding: '10px 12px', background: 'rgba(239,68,68,0.08)',
+              borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)',
+              lineHeight: 1.4,
             }}>
               {error}
             </div>
           )}
 
+          {/* Éxito */}
           {success && (
             <div style={{
-              color: '#16a34a',
-              fontSize: 13,
-              marginBottom: 12,
-              padding: '10px 12px',
-              background: 'rgba(22,163,74,0.08)',
-              borderRadius: 'var(--radius-sm)',
+              color: '#16a34a', fontSize: 13, marginBottom: 14,
+              padding: '10px 12px', background: 'rgba(22,163,74,0.08)',
+              borderRadius: 8, border: '1px solid rgba(22,163,74,0.2)',
+              lineHeight: 1.4,
             }}>
               {success}
             </div>
           )}
 
-          {/*
-            disabled={loading} evita que el usuario haga doble-clic y
-            envíe el formulario dos veces mientras espera la respuesta.
-          */}
-          <button className="btn-p" type="submit" disabled={loading}>
-            {loading
-              ? 'Cargando...'
-              : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+          {/* Botón principal */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%', padding: '13px 0',
+              borderRadius: 12, border: 'none',
+              background: loading ? 'var(--text2)' : 'var(--accent)',
+              color: '#fff',
+              fontSize: 15, fontWeight: 700,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            {loading ? 'Cargando...' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
           </button>
 
         </form>
 
-        {/* ── Toggle login / registro ── */}
-        <button className="btn-s" onClick={toggleMode}>
-          {mode === 'login'
-            ? '¿No tenés cuenta? Registrate'
-            : '¿Ya tenés cuenta? Iniciá sesión'}
-        </button>
-
       </div>
+
+
+      {/* ── Toggle login / registro ──────────────────────── */}
+      <button
+        onClick={toggleMode}
+        style={{
+          marginTop: 20,
+          background: 'none', border: 'none',
+          color: 'var(--accent)',
+          fontSize: 14, fontWeight: 600,
+          cursor: 'pointer', padding: '8px 16px',
+        }}
+      >
+        {mode === 'login'
+          ? '¿No tenés cuenta? Registrate'
+          : '¿Ya tenés cuenta? Iniciá sesión'}
+      </button>
+
     </div>
   )
 }
 
 
-/*
-  translateError — Traduce los errores de Supabase al español
-  
-  Supabase devuelve mensajes en inglés. Esta función los mapea
-  a mensajes amigables en español para el usuario.
-*/
 function translateError(msg) {
   if (!msg) return 'Ocurrió un error inesperado'
-  if (msg.includes('Invalid login credentials'))
-    return 'Email o contraseña incorrectos'
-  if (msg.includes('Email not confirmed'))
-    return 'Confirmá tu email antes de ingresar (revisá tu bandeja de entrada)'
-  if (msg.includes('User already registered'))
-    return 'Ya existe una cuenta con ese email. Iniciá sesión'
-  if (msg.includes('Password should be at least'))
-    return 'La contraseña debe tener al menos 6 caracteres'
-  if (msg.includes('Unable to validate email'))
-    return 'El formato del email no es válido'
-  if (msg.includes('signup is disabled'))
-    return 'El registro está desactivado. Contactá al administrador'
-  // Si no reconocemos el error, mostramos el mensaje original
+  if (msg.includes('Invalid login credentials'))   return 'Email o contraseña incorrectos'
+  if (msg.includes('Email not confirmed'))          return 'Confirmá tu email antes de ingresar (revisá tu bandeja de entrada)'
+  if (msg.includes('User already registered'))      return 'Ya existe una cuenta con ese email. Iniciá sesión'
+  if (msg.includes('Password should be at least'))  return 'La contraseña debe tener al menos 6 caracteres'
+  if (msg.includes('Unable to validate email'))     return 'El formato del email no es válido'
+  if (msg.includes('signup is disabled'))           return 'El registro está desactivado. Contactá al administrador'
   return msg
 }

@@ -164,6 +164,31 @@ export function useNotes(user) {
   }, [])
 
 
+  /* ── moveCategoryNotes — Mueve apuntes entre categorías ──────
+     Llamado desde CategoryDetail antes de eliminar una categoría,
+     cuando el usuario elige mover sus apuntes en lugar de borrarlos.
+  */
+  const moveCategoryNotes = useCallback(async (fromCatId, toCatId) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({ category_id: toCatId })
+        .eq('category_id', fromCatId)
+
+      if (error) throw error
+
+      // Actualizar estado local sin refetch
+      setNotes(prev => prev.map(n =>
+        n.category_id === fromCatId ? { ...n, category_id: toCatId } : n
+      ))
+      return { error: null }
+    } catch (err) {
+      console.error('moveCategoryNotes:', err.message)
+      return { error: err }
+    }
+  }, [])
+
+
   /* ── Valor retornado por el hook ──────────────────────────── */
   return {
     notes,
@@ -172,7 +197,8 @@ export function useNotes(user) {
     fetchNotes,
     createNote,
     updateNote,
-    toggleFavorite,  // (noteId, currentValue) → { data, error }
+    toggleFavorite,
     deleteNote,
+    moveCategoryNotes,  // ← nuevo Fase 5
   }
 }

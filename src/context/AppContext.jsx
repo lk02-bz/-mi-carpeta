@@ -75,7 +75,7 @@ export function AppProvider({ children }) {
   const {
     notes, setNotes,
     loading: notesLoading,
-    createNote, updateNote, toggleFavorite, deleteNote,
+    createNote, updateNote, toggleFavorite, deleteNote, moveCategoryNotes,
   } = useNotes(user)
 
   const {
@@ -93,6 +93,12 @@ export function AppProvider({ children }) {
     createHabit, deleteHabit, toggleHabitLog,
     getEventsForDate, getTasksForDate, isHabitDone,
     getStreak, 
+    achievements,             // ← nuevo
+    moveTaskToToday,          // ← nuevo
+    getYesterdayPendingTasks, // ← nuevo
+    archiveHabit,             // ← nuevo
+    recoverStreak,            // ← nuevo
+    isRecoverable,            // ← nuevo
   } = useCalendar(user)
 
   const {
@@ -197,7 +203,7 @@ export function AppProvider({ children }) {
     createCategory, deleteCategory,
 
     // Apuntes
-    createNote, updateNote, toggleFavorite, deleteNote,
+    createNote, updateNote, toggleFavorite, deleteNote, moveCategoryNotes,
 
     // Tags
     tags,
@@ -212,6 +218,12 @@ export function AppProvider({ children }) {
     createHabit, deleteHabit, toggleHabitLog,
     getEventsForDate, getTasksForDate, isHabitDone,
     getStreak, 
+    achievements,             // ← nuevo
+    moveTaskToToday,          // ← nuevo
+    getYesterdayPendingTasks, // ← nuevo
+    archiveHabit,             // ← nuevo
+    recoverStreak,            // ← nuevo
+    isRecoverable,            // ← nuevo
 
     // Perfil
     displayName,

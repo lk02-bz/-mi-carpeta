@@ -12,7 +12,8 @@ import { useApp } from './context/AppContext'
 
 import TopBar    from './components/layout/TopBar'
 import BottomNav from './components/layout/BottomNav'
-import Toast     from './components/layout/Toast'
+import Toast       from './components/layout/Toast'
+import SplashScreen from './components/layout/SplashScreen'
 
 import AuthScreen         from './components/screens/AuthScreen'
 import HomeScreen         from './components/screens/HomeScreen'
@@ -32,11 +33,7 @@ export default function App() {
   const s = currentFrame.screen
 
   if (authLoading) {
-    return (
-      <div id="app" style={{ justifyContent:'center', alignItems:'center' }}>
-        <p style={{ color:'var(--text2)', fontSize:14 }}>Cargando...</p>
-      </div>
-    )
+    return <SplashScreen />
   }
 
   if (!user) return <AuthScreen />
