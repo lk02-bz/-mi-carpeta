@@ -1627,3 +1627,216 @@ textarea {
 .btn-danger:active {
   background: rgba(192, 57, 43, 0.08);
 }
+
+
+/* ════════════════════════════════════════════════════════
+   FASE 5 — Colores de sección y nuevos componentes
+   ════════════════════════════════════════════════════════ */
+
+/* ── Variables de color por sección ─────────────────────
+   Cada sección del Home tiene su propio color de acento.
+   Se usan en headers, bordes e iconos de cada bloque.
+*/
+:root {
+  --c-habits:   #f97316;   /* naranja  — hábitos       */
+  --c-tasks:    #3b82f6;   /* azul     — tareas        */
+  --c-insights: #8b5cf6;   /* violeta  — análisis      */
+  --c-vision:   #ec4899;   /* rosa     — vision board  */
+  --c-notes:    #10b981;   /* verde    — apuntes       */
+  --c-goals:    #f59e0b;   /* ámbar    — metas         */
+}
+
+/* ── Encabezado de sección con color ─────────────────────
+   Uso: <div className="sec-header habits">
+*/
+.sec-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.sec-header .sec-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.sec-header .sec-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.sec-header .sec-action {
+  font-size: 11px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+/* Variantes de color por sección */
+.sec-header.habits  .sec-icon   { background: rgba(249,115,22,0.15); }
+.sec-header.habits  .sec-label  { color: var(--c-habits); }
+.sec-header.habits  .sec-action { color: var(--c-habits); }
+
+.sec-header.tasks   .sec-icon   { background: rgba(59,130,246,0.15); }
+.sec-header.tasks   .sec-label  { color: var(--c-tasks); }
+.sec-header.tasks   .sec-action { color: var(--c-tasks); }
+
+.sec-header.insights .sec-icon  { background: rgba(139,92,246,0.15); }
+.sec-header.insights .sec-label { color: var(--c-insights); }
+
+.sec-header.vision  .sec-icon   { background: rgba(236,72,153,0.15); }
+.sec-header.vision  .sec-label  { color: var(--c-vision); }
+.sec-header.vision  .sec-action { color: var(--c-vision); }
+
+.sec-header.notes   .sec-icon   { background: rgba(16,185,129,0.15); }
+.sec-header.notes   .sec-label  { color: var(--c-notes); }
+.sec-header.notes   .sec-action { color: var(--c-notes); }
+
+/* ── Barra de foco del día ───────────────────────────────
+   Banda horizontal con resumen del día.
+*/
+.focus-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.focus-pill {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.focus-pill-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.focus-pill-info {
+  flex: 1;
+  min-width: 0;
+}
+.focus-pill-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+.focus-pill-value {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* ── Cards de insight ────────────────────────────────────
+   Tarjetas del sector "Mi Análisis"
+*/
+.insight-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+.insight-card:last-child { margin-bottom: 0; }
+
+.insight-emoji {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.insight-body { flex: 1; min-width: 0; }
+.insight-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+.insight-detail {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+
+/* Colores por tipo */
+.insight-card.success {
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+}
+.insight-card.warning {
+  background: rgba(249,115,22,0.08);
+  border: 1px solid rgba(249,115,22,0.2);
+}
+.insight-card.tip {
+  background: rgba(139,92,246,0.08);
+  border: 1px solid rgba(139,92,246,0.2);
+}
+.insight-card.info {
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.15);
+}
+
+/* ── Tarjeta de tarea rápida en Home ─────────────────────
+*/
+.task-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.task-quick-row:last-child { border-bottom: none; }
+
+.task-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--c-tasks);
+  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.task-check.done {
+  background: var(--c-tasks);
+  border-color: var(--c-tasks);
+}
+
+/* ── Greeting grande ─────────────────────────────────────
+*/
+.greeting-name {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+.greeting-sub {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 0;
+}
+.greeting-date {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}

@@ -173,6 +173,12 @@ export function useStats({ notes, habits, habitLogs }) {
     : 0
 
 
+  /* ── Habit con mejor racha (para useInsights) ───────── */
+  const bestHabit = habitStats.reduce(
+    (best, h) => h.streak > best.streak ? h : best,
+    { streak: 0, name: '' }
+  )
+
   /* ── Valor retornado por el hook ────────────────────── */
   return {
     todayStr,
@@ -181,5 +187,6 @@ export function useStats({ notes, habits, habitLogs }) {
     totalNotes,
     habitsDoneToday,
     bestStreak,
+    bestHabit,
   }
 }
