@@ -10,6 +10,7 @@
 */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useNotifications } from '../hooks/useNotifications'
 import { supabase }         from '../lib/supabase'
 import { useCategories }    from '../hooks/useCategories'
 import { useNotes }         from '../hooks/useNotes'
@@ -134,6 +135,21 @@ export function AppProvider({ children }) {
     uploadGoalCover,
   } = useGoals(user)
 
+/* ── useNotifications v2 ─────────────────────────────── */
+  const { inicializarNotificaciones } = useNotifications({
+    habits,
+    habitLogs,   // ← nuevo, para saber qué hábitos ya se marcaron hoy
+    tasks,       // ← nuevo, para mostrar tareas específicas
+    goals,
+    goalItems,
+    getProgress,
+  })
+
+  useEffect(() => {
+    if (user && !calLoading && !goalsLoading && habits.length > 0) {
+      inicializarNotificaciones()
+    }
+  }, [user, calLoading, goalsLoading])  // sin inicializarNotificaciones en deps → evita loops
   const dataLoading = catsLoading || notesLoading || tagsLoading
 
 
@@ -262,6 +278,9 @@ export function AppProvider({ children }) {
 
     // Toast
     toast, showToast,
+
+    // Notificaciones
+    inicializarNotificaciones,
   }
 
   return (
