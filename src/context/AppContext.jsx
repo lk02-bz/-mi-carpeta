@@ -36,6 +36,7 @@ const MAIN_SCREEN_TITLES = {
   profile:  'Perfil',
   goals:    'Mis Metas',        // ← Fase 4
   vision:   'Vision Board',    // ← Fase 4
+  asistente: 'Asistente',   // ← agregar esta
 }
 
 const HOME_FRAME = { screen: 'home', title: 'Mi Carpeta', catId: null, noteId: null }

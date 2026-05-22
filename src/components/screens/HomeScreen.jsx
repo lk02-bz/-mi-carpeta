@@ -159,7 +159,38 @@ export default function HomeScreen() {
           {todayDisplay()}
         </div>
       </div>
-
+    {/* ── Asistente personal ─────────────────────────── */}
+      <button
+        onClick={() => pushTo('asistente', { title: 'Asistente' })}
+        style={{
+          width: '100%', marginBottom: 20,
+          padding: '14px 18px',
+          borderRadius: 16,
+          border: '1.5px solid rgba(99,102,241,0.3)',
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%)',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 14,
+          textAlign: 'left',
+        }}
+      >
+        <div style={{
+          width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22,
+        }}>
+          🤖
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
+            Asistente personal
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 400 }}>
+            Chat · Devocional · Briefing del día
+          </div>
+        </div>
+        <div style={{ fontSize: 18, color: 'rgba(99,102,241,0.5)', flexShrink: 0 }}>›</div>
+      </button>
 
       {/* ── Barra de foco del día ──────────────────────── */}
       {(habitosTotal > 0 || tareasTotal > 0) && (

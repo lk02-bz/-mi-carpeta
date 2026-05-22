@@ -27,6 +27,7 @@ import StatsScreen        from './components/screens/StatsScreen'
 import ProfileScreen      from './components/screens/ProfileScreen'
 import GoalsScreen        from './components/screens/GoalsScreen'        // ← nuevo Fase 4
 import VisionBoardScreen  from './components/screens/VisionBoardScreen'  // ← nuevo Fase 4
+import AssistantScreen    from './components/screens/AssistantScreen'     // ← agregar esta
 
 export default function App() {
   const { user, authLoading, currentFrame } = useApp()
@@ -54,6 +55,7 @@ export default function App() {
         <div className={`screen ${s === 'profile'  ? 'active' : ''}`}><ProfileScreen /></div>
         <div className={`screen ${s === 'goals'    ? 'active' : ''}`}><GoalsScreen /></div>        {/* ← Fase 4 */}
         <div className={`screen ${s === 'vision'   ? 'active' : ''}`}><VisionBoardScreen /></div>  {/* ← Fase 4 */}
+        <div className={`screen ${s === 'asistente'  ? 'active' : ''}`}><AssistantScreen /></div>  {/* ← agregar esta */}
 
       </div>
       <BottomNav />
