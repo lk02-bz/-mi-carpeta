@@ -112,6 +112,8 @@ export function AppProvider({ children }) {
     updateDisplayName,
     updateAvatar,
     changeAccent,
+    assistantName,
+    updateAssistantName,
   } = useProfile(user)
 
   /* ── useGoals — nuevo Fase 4 ──────────────────────────── */
@@ -251,7 +253,8 @@ export function AppProvider({ children }) {
     updateDisplayName,
     updateAvatar,
     changeAccent,
-
+    assistantName,
+    updateAssistantName,
     // ── Metas & Vision Board (Fase 4) ─────────────────────
     goals,
     goalItems,

@@ -70,6 +70,7 @@ export function useProfile(user) {
   )
   const [saving,          setSaving]          = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [assistantName, setAssistantName] = useState('')
 
 
   /* ── Carga inicial desde Supabase user_metadata ────────
@@ -81,6 +82,7 @@ export function useProfile(user) {
     const meta = user.user_metadata || {}
     setDisplayName(meta.display_name || '')
     setAvatarUrl(meta.avatar_url   || null)
+    setAssistantName(meta.assistant_name || '')
   }, [user])
 
   /* ── Aplica el color guardado al montar ──────────────── */
@@ -170,6 +172,20 @@ export function useProfile(user) {
   /* ════════════════════════════════════════════════════════
      CAMBIAR COLOR DE ACENTO
      ════════════════════════════════════════════════════════ */
+  const updateAssistantName = useCallback(async (name) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { assistant_name: name.trim() }
+      })
+      if (error) throw error
+      setAssistantName(data.user.user_metadata.assistant_name || '')
+      return { error: null }
+    } catch (err) {
+      console.error('updateAssistantName:', err.message)
+      return { error: err }
+    }
+  }, [])
+
 
   const changeAccent = useCallback((id) => {
     applyAccent(id)   // aplica CSS + guarda en localStorage
@@ -187,5 +203,7 @@ export function useProfile(user) {
     updateDisplayName,
     updateAvatar,
     changeAccent,
+    assistantName,
+    updateAssistantName,
   }
 }

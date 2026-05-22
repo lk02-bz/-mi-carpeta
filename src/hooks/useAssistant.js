@@ -123,50 +123,60 @@ export function useAssistant({ contextData }) {
 
       if (existing) {
         // Ya existe — cargar el guardado
-        setDevotional({
-          verse:      existing.verse,
-          reflection: existing.reflection,
-          question:   existing.question,
-        })
+        // Si tiene el formato nuevo (JSON completo en reflection) lo parseamos
+        try {
+          const parsed = JSON.parse(existing.reflection)
+          setDevotional(parsed)
+        } catch {
+          // formato viejo — compatibilidad hacia atrás
+          setDevotional({
+            verse:      existing.verse,
+            reflection: existing.reflection,
+            question:   existing.question,
+          })
+        }
         setUserAnswer(existing.user_answer ?? '')
         setAnswerSaved(!!existing.user_answer)
         return
       }
 
-      // No existe — generar uno nuevo con Gemini
+      // No existe — generar uno nuevo
       const systemPrompt = buildSystemPrompt(contextData)
 
-      const prompt = `Generá un devocional personalizado para hoy basado en el contexto de ${contextData.displayName ?? 'Lucas'}.
+     const prompt = `Generá un devocional cristiano profundo para hoy. Es un espacio de encuentro con Dios — no un coaching personal.
 
-Respondé ÚNICAMENTE con este formato JSON (sin texto adicional, sin markdown):
+Respondé ÚNICAMENTE con este formato JSON exacto (sin texto adicional, sin markdown):
 {
-  "verse": "Texto del versículo (Libro capítulo:versículo)",
-  "reflection": "Reflexión de 3-4 oraciones conectada al versículo y al contexto real de Lucas",
-  "question": "Una pregunta profunda para meditar durante el día"
+  "verse": "Texto completo del versículo (Libro capítulo:versículo)",
+  "verseRef": "Libro capítulo:versículo",
+  "historicalContext": "2-3 oraciones sobre el contexto histórico y cultural del pasaje. Quién lo escribió, a quién, en qué momento de la historia bíblica, qué estaba pasando.",
+  "centralTeaching": "3-4 oraciones sobre qué verdad revela este pasaje acerca de DIOS — Su carácter, Su amor, Su poder, Su voluntad. No sobre el lector, sobre Dios.",
+  "deepDive": "4-5 oraciones con UNO de estos recursos según lo que mejor aplique al versículo: (a) una historia bíblica relacionada que ilustre la misma verdad, (b) un testimonio o experiencia de un cristiano histórico como Spurgeon, Tozer, C.S. Lewis, Hudson Taylor, Corrie ten Boom, etc., o (c) una enseñanza de un libro cristiano clásico. Citá la fuente si usás (b) o (c).",
+  "christianValue": "2-3 oraciones sobre qué virtud o carácter de Cristo se ve en este pasaje — fe, humildad, gracia, obediencia, amor, etc. — y cómo esa virtud se forma en el creyente.",
+  "meditationQuestion": "Una pregunta contemplativa que invite a conocer más a Dios a través de este pasaje. Que no sea sobre problemas personales sino sobre quién es Dios y cómo responder a Su presencia.",
+  "lifeConnection": "2 oraciones máximo conectando esta verdad con la vida diaria de un joven cristiano que estudia, trabaja y busca a Dios en lo cotidiano. Ocasionalmente puede mencionar el contexto específico de Lucas (barbería, facu, finanzas) pero no siempre — solo cuando sea genuinamente relevante.",
+  "prayer": "Una oración de 5-7 oraciones en primera persona. Que sea principalmente de adoración, reconocimiento de quién es Dios y rendición — no una lista de pedidos. Honesta, cálida, basada en la verdad del versículo."
 }
 
-El versículo debe ser real, relevante a su situación actual (fe, trabajo, estudio, finanzas, crecimiento personal).
-La reflexión debe conectar el versículo con su vida concreta, no ser genérica.
-La pregunta debe invitar a una respuesta personal honesta.`
-
+Elegí un versículo que sea rico en contenido teológico y que preste para aprender algo profundo sobre Dios hoy.
+Variá los libros bíblicos — no uses siempre Salmos o Juan.
+El tono general debe ser contemplativo y reverente, de alguien que se sienta a los pies de Dios a aprender.`
       const { text } = await askGemini({
-        messages:     [{ role: 'user', content: prompt }],
+        messages:  [{ role: 'user', content: prompt }],
         systemPrompt,
-        useSearch:    false,
+        useSearch: false,
       })
 
-      // Gemini a veces envuelve el JSON en ```json ... ``` — lo limpiamos
-      const clean   = text.replace(/```json|```/g, '').trim()
-      const parsed  = JSON.parse(clean)
+      const clean  = text.replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(clean)
 
-      // Guardar en Supabase para que mañana no se genere de nuevo
       const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('devotional_diary').insert({
         user_id:    user.id,
         date:       today,
         verse:      parsed.verse,
-        reflection: parsed.reflection,
-        question:   parsed.question,
+        reflection: JSON.stringify(parsed), // guardamos todo el objeto
+        question:   parsed.meditationQuestion,
       })
 
       setDevotional(parsed)

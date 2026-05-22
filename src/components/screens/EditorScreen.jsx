@@ -9,7 +9,7 @@
 ║  ✦ Etiquetas: agregar/quitar tags desde el editor        ║
 ╚══════════════════════════════════════════════════════════╝
 */
-
+import { summarizeNote, explainNote, generateQuestions } from '../../services/geminiService'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useApp }                                   from '../../context/AppContext'
 import { useAttachments }                           from '../../hooks/useAttachments'
@@ -18,13 +18,14 @@ import RichEditor                                   from '../editor/RichEditor'
 import AttachmentPanel                              from '../editor/AttachmentPanel'
 
 export default function EditorScreen() {
-  const {
-    cats, notes,
-    createNote, updateNote, deleteNote,
-    toggleFavorite,
-    tags, createTag, addTagToNote, removeTagFromNote, getTagsForNote,
-    currentFrame, goBack, showToast, user,
-  } = useApp()
+const {
+  cats, notes,
+  createNote, updateNote, deleteNote,
+  toggleFavorite,
+  tags, createTag, addTagToNote, removeTagFromNote, getTagsForNote,
+  currentFrame, goBack, showToast, user,
+  displayName, assistantName,
+} = useApp()
 
   const { noteId, catId } = currentFrame
   const modoEdicion   = noteId !== null
@@ -38,6 +39,12 @@ export default function EditorScreen() {
   const [borrando,       setBorrando]       = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
   const [error,          setError]          = useState('')
+
+  /* ── Estados del asistente ── */
+  const [aiPanel,      setAiPanel]      = useState(false)  // panel visible o no
+  const [aiLoading,    setAiLoading]    = useState(false)  // cargando respuesta
+  const [aiResult,     setAiResult]     = useState('')     // texto de la respuesta
+  const [aiMode,       setAiMode]       = useState('')     // 'resumir'|'explicar'|'preguntas'
 
   /* ── Estados del autoguardado ── */
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
@@ -302,6 +309,52 @@ export default function EditorScreen() {
     goBack()
   }
 
+    /* ── Handlers del asistente ── */
+  async function handleAI(modo) {
+    if (!contenido.trim()) {
+      showToast('La nota no tiene contenido')
+      return
+    }
+    setAiMode(modo)
+    setAiPanel(true)
+    setAiLoading(true)
+    setAiResult('')
+
+    try {
+      let result = ''
+      const params = { title: titulo, content: contenido, displayName: displayName || 'Lucas' }
+
+      if (modo === 'resumir')   result = await summarizeNote(params)
+      if (modo === 'explicar')  result = await explainNote(params)
+      if (modo === 'preguntas') result = await generateQuestions(params)
+
+      setAiResult(result)
+    } catch (err) {
+      setAiResult('Error: ' + err.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  async function handleSaveAiResult() {
+    if (!aiResult) return
+    const modeLabels = {
+      resumir:   'Resumen',
+      explicar:  'Explicación',
+      preguntas: 'Preguntas de estudio',
+    }
+    const { error: saveError } = await createNote({
+      title:      `${modeLabels[aiMode]}: ${titulo}`,
+      content:    aiResult,
+      categoryId: catSelec,
+    })
+    if (saveError) {
+      showToast('Error al guardar')
+      return
+    }
+    showToast('✅ Guardado como apunte nuevo')
+    setAiPanel(false)
+  }
 
   /* ── Tags de esta nota (para mostrar los chips) ── */
   const notaTags = modoEdicion ? getTagsForNote(noteId) : []
@@ -512,6 +565,87 @@ export default function EditorScreen() {
           </div>
         )}
       </div>
+
+
+        {/* ── Botones del asistente (solo en modo edición) ── */}
+      {modoEdicion && (
+        <div className="fld">
+          <label className="lbl">✨ {assistantName || 'Asistente'}</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { modo: 'resumir',   label: '✨ Resumir'   },
+              { modo: 'explicar',  label: '💡 Explicar'  },
+              { modo: 'preguntas', label: '❓ Preguntas' },
+            ].map(({ modo, label }) => (
+              <button
+                key={modo}
+                onClick={() => handleAI(modo)}
+                disabled={aiLoading}
+                style={{
+                  flex: 1, padding: '10px 4px',
+                  borderRadius: 10, fontSize: 12, fontWeight: 600,
+                  border: '1.5px solid var(--border)',
+                  background: aiMode === modo && aiPanel ? 'var(--accent)' : 'var(--bg2)',
+                  color: aiMode === modo && aiPanel ? 'var(--accent-fg)' : 'var(--text)',
+                  cursor: 'pointer', fontFamily: 'var(--sans)',
+                  opacity: aiLoading ? 0.6 : 1,
+                  transition: 'all .15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel de resultado del asistente ── */}
+      {aiPanel && (
+        <div style={{
+          background: 'var(--bg2)', borderRadius: 14,
+          padding: 16, marginBottom: 16,
+          border: '1px solid var(--border)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+              {aiMode === 'resumir'   && '✨ Resumen'}
+              {aiMode === 'explicar'  && '💡 Explicación'}
+              {aiMode === 'preguntas' && '❓ Preguntas de estudio'}
+            </span>
+            <button
+              onClick={() => setAiPanel(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text2)', padding: 4 }}
+            >
+              ×
+            </button>
+          </div>
+
+          {aiLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text2)', fontSize: 13 }}>
+              <div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+              Analizando tu apunte...
+            </div>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap', margin: 0, marginBottom: 12 }}>
+                {aiResult}
+              </p>
+              <button
+                onClick={handleSaveAiResult}
+                style={{
+                  width: '100%', padding: '10px 0',
+                  borderRadius: 10, border: 'none',
+                  background: 'var(--accent)', color: 'var(--accent-fg)',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'var(--sans)',
+                }}
+              >
+                💾 Guardar como apunte nuevo
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Panel de adjuntos (PDFs, docs) ── */}
       <div className="fld">

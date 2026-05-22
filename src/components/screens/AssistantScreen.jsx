@@ -27,8 +27,9 @@ const IconBook    = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentCo
    ════════════════════════════════════════════════════════ */
 
 export default function AssistantScreen() {
-  const {
-    displayName, habits, habitLogs,
+ const {
+    displayName, assistantName, updateAssistantName,
+    habits, habitLogs,
     tasks, goals, getTasksForDate, createNote, showToast,
   } = useApp()
 
@@ -54,7 +55,9 @@ export default function AssistantScreen() {
 
   /* ── Tab activo ──────────────────────────────────────── */
   const [activeTab, setActiveTab] = useState('chat')
-
+  if (!assistantName) {
+    return <AssistantOnboarding onSave={updateAssistantName} />
+  }
   return (
     <div className="assistant-screen">
 
@@ -77,7 +80,7 @@ export default function AssistantScreen() {
 
       {/* ── Contenido según tab activo ───────────────── */}
       <div className="assistant-content">
-        {activeTab === 'chat'       && <ChatTab       assistant={assistant} createNote={createNote} showToast={showToast} />}
+        {activeTab === 'chat' && <ChatTab assistant={assistant} assistantName={assistantName} createNote={createNote} showToast={showToast} />}
         {activeTab === 'devocional' && <DevocionalTab assistant={assistant} showToast={showToast}  />}
         {activeTab === 'briefing'   && <BriefingTab   assistant={assistant} />}
       </div>
@@ -91,7 +94,7 @@ export default function AssistantScreen() {
    TAB 1 — CHAT LIBRE
    ════════════════════════════════════════════════════════ */
 
-function ChatTab({ assistant, createNote, showToast }) {
+function ChatTab({ assistant, assistantName, createNote,showToast }) {
   const { messages, loading, error, sendMessage, clearChat, saveLastResponseAsNote } = assistant
 
   const [input,     setInput]     = useState('')
@@ -122,7 +125,7 @@ function ChatTab({ assistant, createNote, showToast }) {
 
         {messages.length === 0 && (
           <div className="chat-empty">
-            <p className="chat-empty-title">Hola {assistant.contextData?.displayName ?? 'Lucas'} 👋</p>
+            <p className="chat-empty-title">Hola, soy {assistantName} 👋</p>
             <p className="chat-empty-sub">Preguntame lo que quieras. Puedo buscar en internet, resumir apuntes, explicar temas o simplemente charlar.</p>
             <div className="chat-suggestions">
               {[
@@ -244,7 +247,6 @@ function DevocionalTab({ assistant, showToast }) {
     userAnswer, setUserAnswer, answerSaved, saveDevotionalAnswer,
   } = assistant
 
-  /* Cargar el devocional al abrir el tab */
   useEffect(() => { loadDevotional() }, [])
 
   const handleSave = async () => {
@@ -269,30 +271,86 @@ function DevocionalTab({ assistant, showToast }) {
   return (
     <div className="dev-container">
 
-      {/* Versículo */}
+      {/* ── Versículo central ── */}
       <div className="dev-verse-card">
         <div className="dev-verse-icon">✝️</div>
         <p className="dev-verse-text">"{devotional.verse}"</p>
+        {devotional.verseRef && (
+          <p style={{ fontSize: 12, opacity: 0.8, marginTop: 8, fontStyle: 'normal', fontWeight: 600 }}>
+            — {devotional.verseRef}
+          </p>
+        )}
       </div>
 
-      {/* Reflexión */}
-      <div className="dev-section">
-        <h3 className="dev-section-title"><IconBook /> Reflexión</h3>
-        <p className="dev-section-body">{devotional.reflection}</p>
-      </div>
+      {/* ── Contexto histórico ── */}
+      {devotional.historicalContext && (
+        <div className="dev-section">
+          <h3 className="dev-section-title">📜 Contexto histórico</h3>
+          <p className="dev-section-body">{devotional.historicalContext}</p>
+        </div>
+      )}
 
-      {/* Pregunta */}
+     {/* ── Enseñanza central ── */}
+      {devotional.centralTeaching && (
+        <div className="dev-section">
+          <h3 className="dev-section-title">💡 Enseñanza central</h3>
+          <p className="dev-section-body">{devotional.centralTeaching}</p>
+        </div>
+      )}
+
+      {/* ── Profundizando ── */}
+      {devotional.deepDive && (
+        <div className="dev-section">
+          <h3 className="dev-section-title">📚 Profundizando</h3>
+          <p className="dev-section-body">{devotional.deepDive}</p>
+        </div>
+      )}
+
+      {/* ── Valor cristiano ── */}
+      {devotional.christianValue && (
+        <div className="dev-section">
+          <h3 className="dev-section-title">🌱 Valor cristiano</h3>
+          <p className="dev-section-body">{devotional.christianValue}</p>
+        </div>
+      )}
+
+      {/* ── Aplicación práctica ── */}
+      {devotional.practicalApplication && (
+        <div className="dev-section dev-question">
+          <h3 className="dev-section-title">⚡ Para hoy</h3>
+          <p className="dev-section-body">{devotional.practicalApplication}</p>
+        </div>
+      )}
+
+      {/* ── Pregunta para meditar ── */}
       <div className="dev-section dev-question">
         <h3 className="dev-section-title">🤔 Para meditar</h3>
-        <p className="dev-section-body">{devotional.question}</p>
+        <p className="dev-section-body">
+          {devotional.meditationQuestion ?? devotional.question}
+        </p>
       </div>
 
-      {/* Campo de respuesta */}
+      {/* ── Oración ── */}
+      {devotional.prayer && (
+        <div className="dev-section" style={{
+          background: 'var(--bg2)',
+          borderRadius: 14,
+          padding: 16,
+          borderTop: '3px solid var(--accent)',
+        }}>
+          <h3 className="dev-section-title">🙏 Oración</h3>
+          <p className="dev-section-body" style={{ fontStyle: 'italic', lineHeight: 1.8 }}>
+            {devotional.prayer}
+          </p>
+        </div>
+      )}
+
+      {/* ── Tu respuesta personal ── */}
       <div className="dev-section">
-        <h3 className="dev-section-title">✏️ Tu respuesta</h3>
+        <h3 className="dev-section-title">✏️ Tu reflexión personal</h3>
         <textarea
           className="dev-answer-input"
-          placeholder="Escribí tu reflexión personal aquí..."
+          placeholder="¿Qué te habló Dios hoy a través de esto? Escribilo acá..."
           value={userAnswer}
           onChange={e => setUserAnswer(e.target.value)}
           rows={4}
@@ -349,6 +407,69 @@ function BriefingTab({ assistant }) {
       </div>
       <button className="dev-retry-btn" onClick={() => { assistant.briefing = null; loadBriefing() }}>
         🔄 Regenerar
+      </button>
+    </div>
+  )
+}
+
+/* ════════════════════════════════════════════════════════
+   ONBOARDING — Primera vez que abrís el asistente
+   ════════════════════════════════════════════════════════ */
+function AssistantOnboarding({ onSave }) {
+  const [name,   setName]   = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!name.trim()) return
+    setSaving(true)
+    await onSave(name.trim())
+    setSaving(false)
+  }
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      height: '100%', padding: '32px 24px', textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 64, marginBottom: 16 }}>🤖</div>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>
+        ¡Hola! Soy tu asistente personal
+      </h2>
+      <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 32, lineHeight: 1.6 }}>
+        Voy a acompañarte en tu fe, tu estudio y tu crecimiento.
+        ¿Cómo querés llamarme?
+      </p>
+      <input
+        type="text"
+        placeholder="Ej: Elías, Rafa, Sam..."
+        value={name}
+        onChange={e => setName(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && handleSave()}
+        style={{
+          width: '100%', maxWidth: 280,
+          padding: '14px 16px', fontSize: 16,
+          borderRadius: 14, border: '1.5px solid var(--border)',
+          background: 'var(--bg2)', color: 'var(--text)',
+          textAlign: 'center', fontFamily: 'var(--sans)',
+          marginBottom: 16, outline: 'none',
+        }}
+        autoFocus
+      />
+      <button
+        onClick={handleSave}
+        disabled={!name.trim() || saving}
+        style={{
+          width: '100%', maxWidth: 280,
+          padding: '14px 0', borderRadius: 14,
+          background: 'var(--accent)', color: 'var(--accent-fg)',
+          border: 'none', fontSize: 15, fontWeight: 700,
+          cursor: 'pointer',
+          opacity: (!name.trim() || saving) ? 0.4 : 1,
+          fontFamily: 'var(--sans)', marginTop: 0,
+        }}
+      >
+        {saving ? 'Guardando...' : `Listo, te llamo ${name || '...'}`}
       </button>
     </div>
   )
