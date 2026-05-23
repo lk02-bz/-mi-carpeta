@@ -2,10 +2,9 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/context/AppContext.jsx                              ║
 ║                                                          ║
-║  Cambios Fase 4:                                         ║
-║  ✦ Importa y conecta useGoals                            ║
-║  ✦ Agrega 'goals' y 'vision' a MAIN_SCREEN_TITLES        ║
-║  ✦ Expone todo el API de metas e imágenes                ║
+║  Cambios:                                                ║
+║  ✦ Agrega aiPanelOpen, openAiPanel, closeAiPanel         ║
+║    para comunicar TopBar ↔ EditorScreen                  ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -17,7 +16,7 @@ import { useNotes }         from '../hooks/useNotes'
 import { useTags }          from '../hooks/useTags'
 import { useCalendar }      from '../hooks/useCalendar'
 import { useProfile }       from '../hooks/useProfile'
-import { useGoals }         from '../hooks/useGoals'      // ← nuevo Fase 4
+import { useGoals }         from '../hooks/useGoals'
 
 const AppContext = createContext(null)
 
@@ -28,15 +27,15 @@ export function useApp() {
 }
 
 const MAIN_SCREEN_TITLES = {
-  home:     'Mi Carpeta',
-  cats:     'Categorías',
-  search:   'Buscar',
-  calendar: 'Calendario',
-  stats:    'Estadísticas',
-  profile:  'Perfil',
-  goals:    'Mis Metas',        // ← Fase 4
-  vision:   'Vision Board',    // ← Fase 4
-  asistente: 'Asistente',   // ← agregar esta
+  home:      'Mi Carpeta',
+  cats:      'Categorías',
+  search:    'Buscar',
+  calendar:  'Calendario',
+  stats:     'Estadísticas',
+  profile:   'Perfil',
+  goals:     'Mis Metas',
+  vision:    'Vision Board',
+  asistente: 'Asistente',
 }
 
 const HOME_FRAME = { screen: 'home', title: 'Mi Carpeta', catId: null, noteId: null }
@@ -66,7 +65,7 @@ export function AppProvider({ children }) {
 
 
   /* ══════════════════════════════════════════════
-     DATOS — hooks de datos
+     DATOS
      ══════════════════════════════════════════════ */
   const {
     cats, setCats,
@@ -94,13 +93,13 @@ export function AppProvider({ children }) {
     createTask, toggleTask, deleteTask,
     createHabit, deleteHabit, toggleHabitLog,
     getEventsForDate, getTasksForDate, isHabitDone,
-    getStreak, 
-    achievements,             // ← nuevo
-    moveTaskToToday,          // ← nuevo
-    getYesterdayPendingTasks, // ← nuevo
-    archiveHabit,             // ← nuevo
-    recoverStreak,            // ← nuevo
-    isRecoverable,            // ← nuevo
+    getStreak,
+    achievements,
+    moveTaskToToday,
+    getYesterdayPendingTasks,
+    archiveHabit,
+    recoverStreak,
+    isRecoverable,
   } = useCalendar(user)
 
   const {
@@ -116,44 +115,36 @@ export function AppProvider({ children }) {
     updateAssistantName,
   } = useProfile(user)
 
-  /* ── useGoals — nuevo Fase 4 ──────────────────────────── */
   const {
-    goals,
-    goalItems,
-    goalImages,
-    goalsLoading,
-    createGoal,
-    updateGoal,
-    deleteGoal,
-    addGoalItem,
-    toggleGoalItem,
-    deleteGoalItem,
-    getItemsForGoal,
-    getProgress,
-    uploadGoalImage,
-    updateImageCaption,
-    deleteGoalImage,
-    getImagesForGoal,
-    getBoardImages,
-    uploadGoalCover,
+    goals, goalItems, goalImages, goalsLoading,
+    createGoal, updateGoal, deleteGoal,
+    addGoalItem, toggleGoalItem, deleteGoalItem,
+    getItemsForGoal, getProgress,
+    uploadGoalImage, updateImageCaption, deleteGoalImage,
+    getImagesForGoal, getBoardImages, uploadGoalCover,
   } = useGoals(user)
 
-/* ── useNotifications v2 ─────────────────────────────── */
   const { inicializarNotificaciones } = useNotifications({
-    habits,
-    habitLogs,   // ← nuevo, para saber qué hábitos ya se marcaron hoy
-    tasks,       // ← nuevo, para mostrar tareas específicas
-    goals,
-    goalItems,
-    getProgress,
+    habits, habitLogs, tasks, goals, goalItems, getProgress,
   })
 
   useEffect(() => {
     if (user && !calLoading && !goalsLoading && habits.length > 0) {
       inicializarNotificaciones()
     }
-  }, [user, calLoading, goalsLoading])  // sin inicializarNotificaciones en deps → evita loops
+  }, [user, calLoading, goalsLoading])
+
   const dataLoading = catsLoading || notesLoading || tagsLoading
+
+
+  /* ══════════════════════════════════════════════
+     PANEL DEL ASISTENTE EN EDITOR
+     Permite que TopBar abra el panel del asistente
+     que vive en EditorScreen
+     ══════════════════════════════════════════════ */
+  const [aiPanelOpen, setAiPanelOpen] = useState(false)
+  const openAiPanel  = useCallback(() => setAiPanelOpen(true),  [])
+  const closeAiPanel = useCallback(() => setAiPanelOpen(false), [])
 
 
   /* ══════════════════════════════════════════════
@@ -162,7 +153,9 @@ export function AppProvider({ children }) {
   const [nav, setNav] = useState({ stack: [HOME_FRAME] })
   const currentFrame  = nav.stack[nav.stack.length - 1]
 
+  // Cerrar panel del asistente al navegar
   const navTo = useCallback((screen) => {
+    setAiPanelOpen(false)
     setNav({
       stack: [{
         screen,
@@ -174,6 +167,7 @@ export function AppProvider({ children }) {
   }, [])
 
   const pushTo = useCallback((screen, params = {}) => {
+    setAiPanelOpen(false)
     setNav(prev => {
       const prevFrame = prev.stack[prev.stack.length - 1]
       return {
@@ -188,6 +182,7 @@ export function AppProvider({ children }) {
   }, [])
 
   const goBack = useCallback(() => {
+    setAiPanelOpen(false)
     setNav(prev => {
       if (prev.stack.length <= 1) return prev
       return { stack: prev.stack.slice(0, -1) }
@@ -214,9 +209,7 @@ export function AppProvider({ children }) {
     user, authLoading, logout,
 
     // Datos
-    cats, setCats,
-    notes, setNotes,
-    dataLoading,
+    cats, setCats, notes, setNotes, dataLoading,
 
     // Categorías
     createCategory, deleteCategory,
@@ -225,55 +218,30 @@ export function AppProvider({ children }) {
     createNote, updateNote, toggleFavorite, deleteNote, moveCategoryNotes,
 
     // Tags
-    tags,
-    createTag, deleteTag,
+    tags, createTag, deleteTag,
     addTagToNote, removeTagFromNote, getTagsForNote,
 
     // Calendario
-    events, tasks, habits, habitLogs,
-    calLoading,
+    events, tasks, habits, habitLogs, calLoading,
     createEvent, updateEvent, deleteEvent,
     createTask, toggleTask, deleteTask,
     createHabit, deleteHabit, toggleHabitLog,
     getEventsForDate, getTasksForDate, isHabitDone,
-    getStreak, 
-    achievements,             // ← nuevo
-    moveTaskToToday,          // ← nuevo
-    getYesterdayPendingTasks, // ← nuevo
-    archiveHabit,             // ← nuevo
-    recoverStreak,            // ← nuevo
-    isRecoverable,            // ← nuevo
+    getStreak, achievements, moveTaskToToday,
+    getYesterdayPendingTasks, archiveHabit, recoverStreak, isRecoverable,
 
     // Perfil
-    displayName,
-    avatarUrl,
-    accentId,
-    profileSaving,
-    uploadingAvatar,
-    updateDisplayName,
-    updateAvatar,
-    changeAccent,
-    assistantName,
-    updateAssistantName,
-    // ── Metas & Vision Board (Fase 4) ─────────────────────
-    goals,
-    goalItems,
-    goalImages,
-    goalsLoading,
-    createGoal,
-    updateGoal,
-    deleteGoal,
-    addGoalItem,
-    toggleGoalItem,
-    deleteGoalItem,
-    getItemsForGoal,
-    getProgress,
-    uploadGoalImage,
-    updateImageCaption,
-    deleteGoalImage,
-    getImagesForGoal,
-    getBoardImages,
-    uploadGoalCover,
+    displayName, avatarUrl, accentId, profileSaving, uploadingAvatar,
+    updateDisplayName, updateAvatar, changeAccent,
+    assistantName, updateAssistantName,
+
+    // Metas & Vision Board
+    goals, goalItems, goalImages, goalsLoading,
+    createGoal, updateGoal, deleteGoal,
+    addGoalItem, toggleGoalItem, deleteGoalItem,
+    getItemsForGoal, getProgress,
+    uploadGoalImage, updateImageCaption, deleteGoalImage,
+    getImagesForGoal, getBoardImages, uploadGoalCover,
 
     // Navegación
     nav, currentFrame,
@@ -285,6 +253,9 @@ export function AppProvider({ children }) {
 
     // Notificaciones
     inicializarNotificaciones,
+
+    // Panel asistente en editor
+    aiPanelOpen, openAiPanel, closeAiPanel,
   }
 
   return (

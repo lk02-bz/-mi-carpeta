@@ -2,39 +2,37 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/hooks/useAssistant.js                               ║
 ║                                                          ║
-║  Maneja el estado completo del asistente:                ║
-║  - Historial de mensajes del chat                        ║
-║  - Estado de carga y errores                             ║
-║  - Devocional del día (carga y guarda en Supabase)       ║
-║  - Briefing diario                                       ║
+║  Cambios:                                                ║
+║  ✦ sendMessage usa buildFreeSystemPrompt (chat libre)    ║
+║  ✦ saveLastResponseAsNote devuelve nota con .id          ║
+║    para poder navegar a ella después de guardar          ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
 import { useState, useCallback } from 'react'
 import { supabase }              from '../lib/supabase'
-import { askGemini, buildSystemPrompt } from '../services/geminiService'
+import { askGemini, buildSystemPrompt, buildFreeSystemPrompt } from '../services/geminiService'
 
 export function useAssistant({ contextData }) {
-  // contextData viene desde AssistantScreen con los datos del AppContext
 
   /* ── Estado del chat ─────────────────────────────────── */
-  const [messages,  setMessages]  = useState([])   // [{role, content, sources?}]
+  const [messages,  setMessages]  = useState([])
   const [loading,   setLoading]   = useState(false)
   const [error,     setError]     = useState(null)
 
   /* ── Estado del devocional ───────────────────────────── */
-  const [devotional,    setDevotional]    = useState(null)  // {verse, reflection, question}
-  const [devLoading,    setDevLoading]    = useState(false)
-  const [userAnswer,    setUserAnswer]    = useState('')
-  const [answerSaved,   setAnswerSaved]   = useState(false)
+  const [devotional,  setDevotional]  = useState(null)
+  const [devLoading,  setDevLoading]  = useState(false)
+  const [userAnswer,  setUserAnswer]  = useState('')
+  const [answerSaved, setAnswerSaved] = useState(false)
 
   /* ── Estado del briefing ─────────────────────────────── */
-  const [briefing,      setBriefing]      = useState(null)
-  const [briefLoading,  setBriefLoading]  = useState(false)
+  const [briefing,     setBriefing]     = useState(null)
+  const [briefLoading, setBriefLoading] = useState(false)
 
 
   /* ════════════════════════════════════════════════════════
-     CHAT LIBRE
+     CHAT LIBRE — usa prompt libre, sin forzar contexto
      ════════════════════════════════════════════════════════ */
 
   const sendMessage = useCallback(async (userText, useSearch = false) => {
@@ -42,19 +40,18 @@ export function useAssistant({ contextData }) {
 
     setError(null)
 
-    // Agregar el mensaje del usuario al historial visualmente de inmediato
-    const newUserMsg = { role: 'user', content: userText }
+    const newUserMsg      = { role: 'user', content: userText }
     const updatedMessages = [...messages, newUserMsg]
     setMessages(updatedMessages)
     setLoading(true)
 
     try {
-      const systemPrompt = buildSystemPrompt(contextData)
+      const systemPrompt = buildFreeSystemPrompt({
+        assistantName: contextData.assistantName || 'Asistente',
+      })
 
-      // Mandar todo el historial para que Gemini tenga contexto
-      // de la conversación completa, no solo el último mensaje
       const { text, sources } = await askGemini({
-        messages:     updatedMessages,
+        messages:  updatedMessages,
         systemPrompt,
         useSearch,
       })
@@ -80,21 +77,23 @@ export function useAssistant({ contextData }) {
 
   /* ════════════════════════════════════════════════════════
      GUARDAR RESPUESTA COMO APUNTE
-     Convierte la última respuesta del asistente en una nota
-     en TipTap (la crea con createNote del AppContext)
+     Fix: devuelve data directamente con su .id
+     para que AssistantScreen pueda navegar a la nota
      ════════════════════════════════════════════════════════ */
-
-  const saveLastResponseAsNote = useCallback(async (createNote) => {
+  const saveLastResponseAsNote = useCallback(async (createNote, categoryId = null) => {
     const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
     if (!lastAssistant || !createNote) return null
 
     try {
-      // createNote viene del AppContext — es la misma función que usa el editor
-      const note = await createNote({
-        title:   'Respuesta del asistente',
-        content: lastAssistant.content,
+      const { data, error: createError } = await createNote({
+        title:      'Respuesta del asistente',
+        content:    lastAssistant.content,
+        categoryId, // ← ahora sí manda la categoría
       })
-      return note
+
+      if (createError) throw createError
+      return data ?? null
+
     } catch (err) {
       setError(err.message)
       return null
@@ -103,18 +102,17 @@ export function useAssistant({ contextData }) {
 
 
   /* ════════════════════════════════════════════════════════
-     DEVOCIONAL DIARIO
+     DEVOCIONAL DIARIO — usa prompt personal
      ════════════════════════════════════════════════════════ */
 
   const loadDevotional = useCallback(async () => {
-    if (devLoading || devotional) return  // ya lo cargó, no pedir de nuevo
+    if (devLoading || devotional) return
     setDevLoading(true)
     setError(null)
 
-    const today = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
+    const today = new Date().toISOString().slice(0, 10)
 
     try {
-      // Primero buscar si ya existe un devocional guardado para hoy
       const { data: existing } = await supabase
         .from('devotional_diary')
         .select('*')
@@ -122,13 +120,10 @@ export function useAssistant({ contextData }) {
         .maybeSingle()
 
       if (existing) {
-        // Ya existe — cargar el guardado
-        // Si tiene el formato nuevo (JSON completo en reflection) lo parseamos
         try {
           const parsed = JSON.parse(existing.reflection)
           setDevotional(parsed)
         } catch {
-          // formato viejo — compatibilidad hacia atrás
           setDevotional({
             verse:      existing.verse,
             reflection: existing.reflection,
@@ -140,10 +135,9 @@ export function useAssistant({ contextData }) {
         return
       }
 
-      // No existe — generar uno nuevo
       const systemPrompt = buildSystemPrompt(contextData)
 
-     const prompt = `Generá un devocional cristiano profundo para hoy. Es un espacio de encuentro con Dios — no un coaching personal.
+      const prompt = `Generá un devocional cristiano profundo para hoy. Es un espacio de encuentro con Dios — no un coaching personal.
 
 Respondé ÚNICAMENTE con este formato JSON exacto (sin texto adicional, sin markdown):
 {
@@ -154,13 +148,12 @@ Respondé ÚNICAMENTE con este formato JSON exacto (sin texto adicional, sin mar
   "deepDive": "4-5 oraciones con UNO de estos recursos según lo que mejor aplique al versículo: (a) una historia bíblica relacionada que ilustre la misma verdad, (b) un testimonio o experiencia de un cristiano histórico como Spurgeon, Tozer, C.S. Lewis, Hudson Taylor, Corrie ten Boom, etc., o (c) una enseñanza de un libro cristiano clásico. Citá la fuente si usás (b) o (c).",
   "christianValue": "2-3 oraciones sobre qué virtud o carácter de Cristo se ve en este pasaje — fe, humildad, gracia, obediencia, amor, etc. — y cómo esa virtud se forma en el creyente.",
   "meditationQuestion": "Una pregunta contemplativa que invite a conocer más a Dios a través de este pasaje. Que no sea sobre problemas personales sino sobre quién es Dios y cómo responder a Su presencia.",
-  "lifeConnection": "2 oraciones máximo conectando esta verdad con la vida diaria de un joven cristiano que estudia, trabaja y busca a Dios en lo cotidiano. Ocasionalmente puede mencionar el contexto específico de Lucas (barbería, facu, finanzas) pero no siempre — solo cuando sea genuinamente relevante.",
+  "lifeConnection": "2 oraciones máximo conectando esta verdad con la vida diaria de un joven cristiano que estudia, trabaja y busca a Dios en lo cotidiano.",
   "prayer": "Una oración de 5-7 oraciones en primera persona. Que sea principalmente de adoración, reconocimiento de quién es Dios y rendición — no una lista de pedidos. Honesta, cálida, basada en la verdad del versículo."
 }
 
-Elegí un versículo que sea rico en contenido teológico y que preste para aprender algo profundo sobre Dios hoy.
-Variá los libros bíblicos — no uses siempre Salmos o Juan.
-El tono general debe ser contemplativo y reverente, de alguien que se sienta a los pies de Dios a aprender.`
+Elegí un versículo rico en contenido teológico. Variá los libros bíblicos. El tono debe ser contemplativo y reverente.`
+
       const { text } = await askGemini({
         messages:  [{ role: 'user', content: prompt }],
         systemPrompt,
@@ -175,7 +168,7 @@ El tono general debe ser contemplativo y reverente, de alguien que se sienta a l
         user_id:    user.id,
         date:       today,
         verse:      parsed.verse,
-        reflection: JSON.stringify(parsed), // guardamos todo el objeto
+        reflection: JSON.stringify(parsed),
         question:   parsed.meditationQuestion,
       })
 
@@ -198,7 +191,6 @@ El tono general debe ser contemplativo y reverente, de alguien que se sienta a l
         .from('devotional_diary')
         .update({ user_answer: userAnswer })
         .eq('date', today)
-
       setAnswerSaved(true)
     } catch (err) {
       setError(err.message)
@@ -207,7 +199,7 @@ El tono general debe ser contemplativo y reverente, de alguien que se sienta a l
 
 
   /* ════════════════════════════════════════════════════════
-     BRIEFING DIARIO
+     BRIEFING DIARIO — usa prompt personal
      ════════════════════════════════════════════════════════ */
 
   const loadBriefing = useCallback(async () => {
@@ -225,7 +217,7 @@ El tono general debe ser contemplativo y reverente, de alguien que se sienta a l
       const pending     = tasksToday.filter(t => !t.completed)
       const done        = tasksToday.filter(t =>  t.completed)
 
-      const prompt = `Hacé el briefing diario de Lucas. Tenés esta información:
+      const prompt = `Hacé el briefing diario. Tenés esta información:
 
 HÁBITOS HOY: ${habitsDone}/${habitsTotal} completados
 ${habitStats.map(h => `- ${h.name}: ${h.doneToday ? '✓ hecho' : '✗ pendiente'} (racha: ${h.streak} días)`).join('\n')}
@@ -242,9 +234,9 @@ MEJOR RACHA: ${bestStreak} días seguidos
 Respondé con un briefing breve y personal: estado real del día, qué priorizar ahora, y una palabra de aliento o versículo relevante según cómo viene. Sé directo, no genérico.`
 
       const { text } = await askGemini({
-        messages:     [{ role: 'user', content: prompt }],
+        messages:  [{ role: 'user', content: prompt }],
         systemPrompt,
-        useSearch:    false,
+        useSearch: false,
       })
 
       setBriefing(text)
@@ -257,28 +249,17 @@ Respondé con un briefing breve y personal: estado real del día, qué priorizar
   }, [briefLoading, briefing, contextData])
 
 
-  /* ── API pública del hook ────────────────────────────── */
   return {
     // Chat
-    messages,
-    loading,
-    error,
-    sendMessage,
-    clearChat,
-    saveLastResponseAsNote,
+    messages, loading, error,
+    sendMessage, clearChat, saveLastResponseAsNote,
 
     // Devocional
-    devotional,
-    devLoading,
-    userAnswer,
-    setUserAnswer,
-    answerSaved,
-    loadDevotional,
-    saveDevotionalAnswer,
+    devotional, devLoading,
+    userAnswer, setUserAnswer, answerSaved,
+    loadDevotional, saveDevotionalAnswer,
 
     // Briefing
-    briefing,
-    briefLoading,
-    loadBriefing,
+    briefing, briefLoading, loadBriefing,
   }
 }
