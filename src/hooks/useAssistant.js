@@ -3,12 +3,16 @@
 ║  src/hooks/useAssistant.js                               ║
 ║                                                          ║
 ║  Cambios:                                                ║
-║  ✦ analyzeFinances — análisis financiero completo        ║
-║  ✦ financialAnalysis, financeLoading, resetFinance       ║
+║  ✦ useFinanzas — centro de comando financiero            ║
+║    · ingresos: CRUD en Supabase income_records           ║
+║    · ideas: CRUD en Supabase business_ideas              ║
+║    · presupuesto: análisis con IA                        ║
+║    · proyección: simulación hacia meta                   ║
+║    · decisiones: debate con IA                           ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { supabase }              from '../lib/supabase'
 import { askGemini, buildSystemPrompt, buildFreeSystemPrompt } from '../services/geminiService'
 
@@ -37,9 +41,14 @@ export function useAssistant({ contextData }) {
   const [habitAnalysis, setHabitAnalysis] = useState(null)
   const [habitLoading,  setHabitLoading]  = useState(false)
 
-  /* ── Análisis financiero ── */
-  const [financialAnalysis, setFinancialAnalysis] = useState(null)
-  const [financeLoading,    setFinanceLoading]    = useState(false)
+  /* ── Finanzas ── */
+  const [incomeRecords,   setIncomeRecords]   = useState([])
+  const [businessIdeas,   setBusinessIdeas]   = useState([])
+  const [financeLoading,  setFinanceLoading]  = useState(false)
+  const [budgetAnalysis,  setBudgetAnalysis]  = useState(null)
+  const [budgetLoading,   setBudgetLoading]   = useState(false)
+  const [decisionResult,  setDecisionResult]  = useState(null)
+  const [decisionLoading, setDecisionLoading] = useState(false)
 
 
   /* ════════════════════════════════════════════════════════
@@ -212,94 +221,144 @@ Respondé ÚNICAMENTE con este JSON (sin markdown):
 
 
   /* ════════════════════════════════════════════════════════
-     ANÁLISIS FINANCIERO
+     FINANZAS — INGRESOS (Supabase)
      ════════════════════════════════════════════════════════ */
 
-  const analyzeFinances = useCallback(async ({
-    ingresosBarberia,
-    horasSemana,
-    gastosBarberia,
-    gastosPersonales,
-    otrosIngresos,
-    metaAhorro,
-    plazoMeses,
-    aportePadres,
-  }) => {
-    setFinanceLoading(true); setFinancialAnalysis(null)
+  const loadIncomeRecords = useCallback(async () => {
+    setFinanceLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data } = await supabase
+        .from('income_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(100)
+      setIncomeRecords(data || [])
+    } catch (err) { console.error(err) }
+    finally { setFinanceLoading(false) }
+  }, [])
+
+  const addIncomeRecord = useCallback(async ({ source, amount, date, note }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error: insertError } = await supabase
+        .from('income_records')
+        .insert({ user_id: user.id, source, amount: Number(amount), date, note: note || null })
+        .select()
+        .single()
+      if (insertError) throw insertError
+      setIncomeRecords(prev => [data, ...prev])
+      return { data }
+    } catch (err) { return { error: err.message } }
+  }, [])
+
+  const deleteIncomeRecord = useCallback(async (id) => {
+    try {
+      await supabase.from('income_records').delete().eq('id', id)
+      setIncomeRecords(prev => prev.filter(r => r.id !== id))
+    } catch (err) { console.error(err) }
+  }, [])
+
+
+  /* ════════════════════════════════════════════════════════
+     FINANZAS — IDEAS DE NEGOCIO (Supabase)
+     ════════════════════════════════════════════════════════ */
+
+  const loadBusinessIdeas = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data } = await supabase
+        .from('business_ideas')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      setBusinessIdeas(data || [])
+    } catch (err) { console.error(err) }
+  }, [])
+
+  const addBusinessIdea = useCallback(async (idea) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error: insertError } = await supabase
+        .from('business_ideas')
+        .insert({ user_id: user.id, ...idea })
+        .select()
+        .single()
+      if (insertError) throw insertError
+      setBusinessIdeas(prev => [data, ...prev])
+      return { data }
+    } catch (err) { return { error: err.message } }
+  }, [])
+
+  const updateBusinessIdea = useCallback(async (id, updates) => {
+    try {
+      const { data, error: updateError } = await supabase
+        .from('business_ideas')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      if (updateError) throw updateError
+      setBusinessIdeas(prev => prev.map(i => i.id === id ? data : i))
+    } catch (err) { console.error(err) }
+  }, [])
+
+  const deleteBusinessIdea = useCallback(async (id) => {
+    try {
+      await supabase.from('business_ideas').delete().eq('id', id)
+      setBusinessIdeas(prev => prev.filter(i => i.id !== id))
+    } catch (err) { console.error(err) }
+  }, [])
+
+
+  /* ════════════════════════════════════════════════════════
+     FINANZAS — ANALIZAR PRESUPUESTO CON IA
+     ════════════════════════════════════════════════════════ */
+
+  const analyzeBudget = useCallback(async ({ ingresos, gastos, meta, plazo }) => {
+    setBudgetLoading(true); setBudgetAnalysis(null)
     try {
       const systemPrompt = buildSystemPrompt(contextData)
 
-      const ingresoTotal  = Number(ingresosBarberia) + Number(otrosIngresos || 0)
-      const gastoTotal    = Number(gastosBarberia) + Number(gastosPersonales)
-      const horasMes      = Number(horasSemana) * 4.3
-      const gananciaNet   = Number(ingresosBarberia) - Number(gastosBarberia)
-      const gananciaHora  = horasMes > 0 ? Math.round(gananciaNet / horasMes) : 0
+      // Calcular totales
+      const totalIngresos = ingresos.reduce((s, i) => s + Number(i.amount), 0)
+      const totalGastos   = gastos.reduce((s, g) => s + Number(g.amount), 0)
+      const saldo         = totalIngresos - totalGastos
 
-      const prompt = `Analizá la situación financiera de este joven argentino y dá recomendaciones concretas y realistas.
+      const prompt = `Sos un asesor financiero experto para jóvenes emprendedores argentinos. Analizá este presupuesto y dá recomendaciones concretas.
 
-DATOS FINANCIEROS (en pesos argentinos):
-- Ingresos barbería/mes: $${ingresosBarberia}
-- Gastos fijos barbería/mes: $${gastosBarberia}
-- Ganancia neta barbería: $${gananciaNet}
-- Horas trabajadas en barbería/semana: ${horasSemana}h (${horasMes.toFixed(0)}h/mes)
-- Ganancia por hora de barbería: $${gananciaHora}
-- Gastos personales/mes: $${gastosPersonales}
-- Otros ingresos/mes: $${otrosIngresos || 0}
-- Ingreso total/mes: $${ingresoTotal}
-- Gasto total/mes: $${gastoTotal}
-- Saldo disponible: $${ingresoTotal - gastoTotal}
-- Meta de ahorro: $${metaAhorro} en ${plazoMeses} meses
-- Aporte mensual para padres deseado: $${aportePadres || 0}
+PERFIL: Joven de ~20 años, estudiante de ingeniería en computación, barbero particular, desarrollador web freelance, quiere llegar a $1.000.000/mes de ingresos para tener libertad financiera.
 
-Contexto: Es estudiante de ingeniería, trabaja en su propia barbería, quiere crecer financieramente para ayudar a sus padres y construir negocios.
+INGRESOS MENSUALES:
+${ingresos.map(i => `- ${i.label}: $${Number(i.amount).toLocaleString('es-AR')}`).join('\n')}
+TOTAL INGRESOS: $${totalIngresos.toLocaleString('es-AR')}
 
-Respondé ÚNICAMENTE con este JSON exacto (sin markdown, sin texto extra):
+GASTOS MENSUALES:
+${gastos.map(g => `- ${g.label}: $${Number(g.amount).toLocaleString('es-AR')}`).join('\n')}
+TOTAL GASTOS: $${totalGastos.toLocaleString('es-AR')}
+
+SALDO DISPONIBLE: $${saldo.toLocaleString('es-AR')}
+META MENSUAL: $${Number(meta).toLocaleString('es-AR')}
+PLAZO: ${plazo} meses
+
+Respondé ÚNICAMENTE con este JSON (sin markdown):
 {
-  "resumen": "2-3 oraciones sobre la situación financiera actual, honesto y directo",
-  "barberia": {
-    "gananciaNetaMensual": número,
-    "gananciaPorHora": número,
-    "margenGanancia": número_porcentaje,
-    "diagnostico": "diagnóstico conciso de la rentabilidad",
-    "potencial": "qué podría ganar si optimiza (ej: subir precios, más clientes)",
-    "puntosAMejorar": ["punto 1", "punto 2"]
-  },
-  "presupuesto": {
-    "ingresoTotal": número,
-    "gastoTotal": número,
-    "saldoLibre": número,
-    "categorias": [
-      {"nombre": "Barbería (gastos)", "monto": número, "porcentaje": número, "color": "riesgo|ok|bien"},
-      {"nombre": "Gastos personales", "monto": número, "porcentaje": número, "color": "riesgo|ok|bien"},
-      {"nombre": "Ahorro propuesto", "monto": número, "porcentaje": número, "color": "bien"},
-      {"nombre": "Aporte padres", "monto": número, "porcentaje": número, "color": "bien"},
-      {"nombre": "Disponible", "monto": número, "porcentaje": número, "color": "ok"}
-    ]
-  },
-  "ahorro": {
-    "montoMensualRecomendado": número,
-    "esAlcanzable": true_o_false,
-    "mesesReales": número,
-    "proyeccion": [
-      {"mes": 3, "acumulado": número, "hito": "descripción opcional del hito"},
-      {"mes": 6, "acumulado": número, "hito": ""},
-      {"mes": 12, "acumulado": número, "hito": ""},
-      {"mes": número_de_plazo, "acumulado": número, "hito": "Meta alcanzada"}
-    ],
-    "consejo": "consejo específico para ahorrar más dado su situación"
-  },
-  "padres": {
-    "posible": true_o_false,
-    "montoSugerido": número,
-    "cuandoEmpezar": "descripción de cuándo y cómo empezar",
-    "estrategia": "estrategia concreta para poder ayudarlos"
-  },
-  "accionesPrioritarias": [
-    "Acción concreta y específica #1 para esta semana",
-    "Acción concreta y específica #2 para este mes",
-    "Acción concreta y específica #3 para este trimestre"
+  "diagnostico": "2 oraciones sobre la situación actual, honesto y directo",
+  "saludFinanciera": "excelente|buena|ajustada|critica",
+  "distribucionIdeal": [
+    {"categoria": "nombre", "porcentaje": número, "montoSugerido": número, "observacion": "nota corta"}
   ],
-  "mensajeFinal": "Mensaje motivador, honesto, basado en los datos reales. Puede incluir perspectiva cristiana si aplica naturalmente."
+  "saldoParaAhorrar": número,
+  "mesesParaMeta": número,
+  "pasosSemanaQueViene": [
+    "acción concreta 1",
+    "acción concreta 2",
+    "acción concreta 3"
+  ],
+  "alertas": ["alerta si algún gasto es desproporcionado"],
+  "oportunidad": "la mayor oportunidad de crecimiento de ingresos dado su perfil",
+  "mensajeFinal": "mensaje motivador corto y honesto"
 }`
 
       const { text } = await askGemini({
@@ -307,18 +366,125 @@ Respondé ÚNICAMENTE con este JSON exacto (sin markdown, sin texto extra):
         systemPrompt,
         useSearch: false,
       })
-
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
-      setFinancialAnalysis(parsed)
-
+      setBudgetAnalysis(JSON.parse(text.replace(/```json|```/g, '').trim()))
     } catch (err) {
-      setFinancialAnalysis({ error: `No se pudo analizar: ${err.message}` })
+      setBudgetAnalysis({ error: err.message })
     } finally {
-      setFinanceLoading(false)
+      setBudgetLoading(false)
     }
   }, [contextData])
 
-  const resetFinancialAnalysis = useCallback(() => setFinancialAnalysis(null), [])
+  const resetBudgetAnalysis = useCallback(() => setBudgetAnalysis(null), [])
+
+
+  /* ════════════════════════════════════════════════════════
+     FINANZAS — DEBATIR IDEA CON IA
+     ════════════════════════════════════════════════════════ */
+
+  const debateIdea = useCallback(async ({ idea, context }) => {
+    try {
+      const systemPrompt = buildSystemPrompt(contextData)
+      const prompt = `Sos un mentor de negocios experto para jóvenes emprendedores argentinos. Evaluá esta idea de negocio con honestidad y profundidad.
+
+IDEA: ${idea}
+${context ? `CONTEXTO ADICIONAL: ${context}` : ''}
+
+PERFIL DEL EMPRENDEDOR:
+- Estudiante de ingeniería en computación (conocimientos técnicos base)
+- Sabe hacer páginas web y apps (ya vendió su primera página)
+- Barbero particular (ingreso complementario)
+- Interesado en automatizaciones con IA
+- Meta: $1.000.000/mes, libertad financiera, ayudar a sus padres
+
+Respondé ÚNICAMENTE con este JSON (sin markdown):
+{
+  "titulo": "nombre atractivo para la idea",
+  "potencialIngresos": "estimación realista mensual en pesos argentinos",
+  "dificultad": "baja|media|alta",
+  "tiempoParaPrimerIngreso": "estimación realista (ej: 2-4 semanas)",
+  "alineacion": número_del_1_al_10,
+  "prosContra": {
+    "pros": ["pro 1", "pro 2", "pro 3"],
+    "contras": ["contra 1", "contra 2", "contra 3"]
+  },
+  "pasosConcretosParaEmpezar": [
+    "paso 1 — qué hacer esta semana",
+    "paso 2 — qué hacer el próximo mes",
+    "paso 3 — qué tener en 3 meses"
+  ],
+  "riesgos": ["riesgo principal 1", "riesgo principal 2"],
+  "veredicto": "Recomendada|Prometedora|Con reservas|No recomendada",
+  "razonVeredicto": "2-3 oraciones explicando el veredicto con contexto de su situación real",
+  "alternativa": "si hay una variación mejor de la misma idea, describila aquí"
+}`
+
+      const { text } = await askGemini({
+        messages: [{ role: 'user', content: prompt }],
+        systemPrompt,
+        useSearch: false,
+      })
+      return { data: JSON.parse(text.replace(/```json|```/g, '').trim()) }
+    } catch (err) {
+      return { error: err.message }
+    }
+  }, [contextData])
+
+
+  /* ════════════════════════════════════════════════════════
+     FINANZAS — DEBATIR DECISIÓN CON IA
+     ════════════════════════════════════════════════════════ */
+
+  const debateDecision = useCallback(async ({ decision, context }) => {
+    setDecisionLoading(true); setDecisionResult(null)
+    try {
+      const systemPrompt = buildSystemPrompt(contextData)
+      const prompt = `Sos un mentor sabio y honesto. Ayudá a este joven a tomar una decisión importante analizándola desde múltiples ángulos.
+
+DECISIÓN: ${decision}
+${context ? `CONTEXTO: ${context}` : ''}
+
+Respondé ÚNICAMENTE con este JSON (sin markdown):
+{
+  "decision": "la decisión resumida en una oración",
+  "marcos": [
+    {
+      "nombre": "Corto plazo",
+      "perspectiva": "cómo impacta en los próximos 3-6 meses"
+    },
+    {
+      "nombre": "Largo plazo",
+      "perspectiva": "cómo impacta en 1-3 años"
+    },
+    {
+      "nombre": "Financiero",
+      "perspectiva": "impacto económico concreto"
+    },
+    {
+      "nombre": "Personal",
+      "perspectiva": "impacto en bienestar, estudio, relaciones"
+    }
+  ],
+  "pros": ["pro 1", "pro 2", "pro 3"],
+  "contras": ["contra 1", "contra 2", "contra 3"],
+  "preguntasQueDebesHacerte": ["pregunta reflexiva 1", "pregunta reflexiva 2"],
+  "recomendacion": "la recomendación del mentor, honesta y directa",
+  "alternativa": "si hay una tercera opción que no estás considerando, describila"
+}`
+
+      const { text } = await askGemini({
+        messages: [{ role: 'user', content: prompt }],
+        systemPrompt,
+        useSearch: false,
+      })
+      setDecisionResult(JSON.parse(text.replace(/```json|```/g, '').trim()))
+    } catch (err) {
+      setDecisionResult({ error: err.message })
+    } finally {
+      setDecisionLoading(false)
+    }
+  }, [contextData])
+
+  const resetDecision = useCallback(() => setDecisionResult(null), [])
 
 
   return {
@@ -342,8 +508,12 @@ Respondé ÚNICAMENTE con este JSON exacto (sin markdown, sin texto extra):
     habitAnalysis, habitLoading,
     analyzeHabits, resetHabitAnalysis,
 
-    // Análisis financiero
-    financialAnalysis, financeLoading,
-    analyzeFinances, resetFinancialAnalysis,
+    // Finanzas
+    incomeRecords, businessIdeas, financeLoading,
+    loadIncomeRecords, addIncomeRecord, deleteIncomeRecord,
+    loadBusinessIdeas, addBusinessIdea, updateBusinessIdea, deleteBusinessIdea,
+    budgetAnalysis, budgetLoading, analyzeBudget, resetBudgetAnalysis,
+    decisionResult, decisionLoading, debateDecision, resetDecision,
+    debateIdea,
   }
 }
