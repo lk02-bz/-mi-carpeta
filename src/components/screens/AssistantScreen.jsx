@@ -16,7 +16,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useApp }       from '../../context/AppContext'
 import { useStats }     from '../../hooks/useStats'
 import { useAssistant } from '../../hooks/useAssistant'
-import { useSpeech }    from '../../hooks/useSpeech'
+import { useSpeech, useMic } from '../../hooks/useSpeech'
 
 /* ── Íconos ── */
 const IconSend     = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -116,7 +116,6 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
   const { messages, loading, error, sendMessage, clearChat, saveLastResponseAsNote } = assistant
   const [input, setInput] = useState('')
   const [useSearch, setUseSearch] = useState(false)
-  const [listening, setListening] = useState(false)
   const recognitionRef = useRef(null)
   const bottomRef = useRef(null)
 
@@ -128,24 +127,17 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
     defaultCatId: cats?.[0]?.id ?? null,
   }
 
+  const { listening, toggleListening } = useMic({
+    onResult: text => setInput(p => p ? `${p} ${text}` : text),
+    onError:  msg  => showToast(msg),
+  })
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
-  useEffect(() => { return () => recognitionRef.current?.abort() }, [])
 
   const handleSend = () => {
     if (!input.trim()) return
     sendMessage(input.trim(), useSearch, actions)
     setInput('')
-  }
-
-  function handleMic() {
-    if (listening) { recognitionRef.current?.abort(); setListening(false); return }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) { showToast('Tu navegador no soporta voz'); return }
-    const r = new SR(); r.lang = 'es-AR'; r.continuous = false; r.interimResults = false
-    r.onresult = e => { setInput(p => p ? `${p} ${e.results[0][0].transcript}` : e.results[0][0].transcript); setListening(false) }
-    r.onerror = e => { if (e.error !== 'aborted') showToast('No se pudo escuchar'); setListening(false) }
-    r.onend = () => setListening(false)
-    recognitionRef.current = r; r.start(); setListening(true)
   }
 
   const handleSaveNote = async () => {
@@ -201,7 +193,7 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
         </div>
         <div className="chat-input-row">
           <textarea className="chat-input" placeholder={listening ? 'Escuchando...' : 'Escribí tu mensaje...'} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} rows={2} />
-          <button onClick={handleMic} style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: listening ? '#ef4444' : 'var(--bg2)', color: listening ? '#fff' : 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, transition: 'all .2s', boxShadow: listening ? '0 0 0 4px rgba(239,68,68,0.2)' : 'none' }}><IconMic /></button>
+          <button onClick={toggleListening} style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: listening ? '#ef4444' : 'var(--bg2)', color: listening ? '#fff' : 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, transition: 'all .2s', boxShadow: listening ? '0 0 0 4px rgba(239,68,68,0.2)' : 'none' }}><IconMic /></button>
           <button className="chat-send-btn" onClick={handleSend} disabled={loading || !input.trim()}><IconSend /></button>
         </div>
       </div>

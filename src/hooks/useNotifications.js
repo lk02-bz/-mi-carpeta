@@ -32,6 +32,14 @@ const SLOT = {
   META_OFFSET:  1000,
 }
 
+// ─── Imágenes rotativas por tipo ──────────────────────────
+// Tienen que estar en android/app/src/main/res/drawable/
+const IMGS = {
+  HABITOS: ['notif_habitos_1', 'notif_habitos_2', 'notif_habitos_3'],
+  TAREAS:  ['notif_tareas_1'],
+  METAS:   ['notif_meta_1'],
+}
+
 // ─── Helpers ──────────────────────────────────────────────
 
 function hoyStr() {
@@ -59,6 +67,11 @@ function proximaHora(hour, minute) {
 // Rota por día de la semana
 function porDia(array) {
   return array[new Date().getDay() % array.length]
+}
+
+// Rota imagen por hora (más variedad dentro del mismo día)
+function imgPorHora(array) {
+  return array[new Date().getHours() % array.length]
 }
 
 // Elige al azar (para el cierre nocturno)
@@ -336,12 +349,19 @@ export function useNotifications({
       const args = slot.args()
       const body = msg.body(...args)
 
+      // Elegir imagen según tipo de slot
+      const esSlotTareas = [SLOT.MEDIODIA_2].includes(slot.id)
+      const imgActual = esSlotTareas
+        ? imgPorHora(IMGS.TAREAS)
+        : imgPorHora(IMGS.HABITOS)
+
       notificaciones.push({
         id:        slot.id,
         title:     msg.title,
         body:      body,
         channelId: 'mi-carpeta-principal',
-        largeIcon: 'ic_launcher',
+        largeIcon: imgActual,
+        smallIcon: 'ic_stat_notif',
         schedule: {
           at:             trigger,
           allowWhileIdle: true,
@@ -367,7 +387,8 @@ export function useNotifications({
         title:     '🎯 Meta sin movimiento',
         body:      `"${goal.title}" lleva ${diasStr} sin avance. Un paso hoy es suficiente.`,
         channelId: 'mi-carpeta-principal',
-        largeIcon: 'ic_launcher',
+        largeIcon: imgPorHora(IMGS.METAS),
+        smallIcon: 'ic_stat_notif',
         schedule: {
           at:             trigger,
           allowWhileIdle: true,

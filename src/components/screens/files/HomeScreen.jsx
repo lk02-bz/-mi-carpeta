@@ -131,14 +131,18 @@ export default function HomeScreen() {
 
   if (dataLoading) {
     return (
-      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text2)' }}>
-        Cargando...
+      <div className="home-cosmic">
+        <div className="home-content">
+          <div className="empty">Cargando...</div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: '16px 14px 120px' }}>
+    <div className="home-cosmic">
+
+      <div className="home-content">
 
         {/* ── Saludo ── */}
         <div style={{ marginBottom: 22 }}>
@@ -416,7 +420,7 @@ export default function HomeScreen() {
           />
         )}
 
-      </div>
+    </div>
   )
 }
 
