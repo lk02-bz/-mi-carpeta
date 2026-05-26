@@ -55,17 +55,95 @@ export function useAssistant({ contextData }) {
      CHAT LIBRE
      ════════════════════════════════════════════════════════ */
 
-  const sendMessage = useCallback(async (userText, useSearch = false) => {
+  const sendMessage = useCallback(async (userText, useSearch = false, actions = {}) => {
     if (!userText.trim() || loading) return
     setError(null)
     const newUserMsg      = { role: 'user', content: userText }
     const updatedMessages = [...messages, newUserMsg]
     setMessages(updatedMessages)
     setLoading(true)
+
     try {
       const systemPrompt = buildFreeSystemPrompt({ assistantName: contextData.assistantName || 'Asistente' })
-      const { text, sources } = await askGemini({ messages: updatedMessages, systemPrompt, useSearch })
-      setMessages(prev => [...prev, { role: 'assistant', content: text, sources }])
+
+      /* ── Detectar intención de acción ── */
+      const lower = userText.toLowerCase()
+
+      const isTarea = /\b(cre[aá]|agrega[á]?|a[ñn]ad[ií]|nueva?|pon[eé]|recordame|tarea)\b.*\b(tarea|recordatorio|pendiente)\b|\b(tarea|recordatorio)\b.*\b(cre[aá]|agrega[á]?|para|de|:)\b/i.test(userText)
+      const isMeta  = /\b(nueva?|cre[aá]|agrega[á]?)\b.*\b(meta|objetivo|goal)\b|\b(meta|objetivo)\b.*\b(nueva?|cre[aá]|agrega[á]?|quiero|de|:)\b/i.test(userText)
+      const isApunte = /\b(guard[aá]|anot[aá]|cre[aá]|guard[aá] esto|crear apunte|guardar apunte|nuevo apunte)\b/i.test(userText)
+
+      // Ejecutar acción detectada
+      let accionRealizada = null
+
+      if (isTarea && actions.createTask) {
+        // Extraer fecha si la menciona
+        let fecha = new Date().toISOString().slice(0, 10)
+        const manana = /ma[ñn]ana/i.test(userText)
+        const pasado = /pasado ma[ñn]ana/i.test(userText)
+        if (pasado) { const d = new Date(); d.setDate(d.getDate()+2); fecha = d.toISOString().slice(0,10) }
+        else if (manana) { const d = new Date(); d.setDate(d.getDate()+1); fecha = d.toISOString().slice(0,10) }
+
+        // Extraer título — quitar palabras de comando
+        const titulo = userText
+          .replace(/cre[aá]|agrega[á]?|a[ñn]ad[ií]|nueva?|pon[eé]|recordame|una tarea|tarea para|tarea:|tarea/gi, '')
+          .replace(/ma[ñn]ana|pasado ma[ñn]ana|hoy|para|de|:/gi, '')
+          .trim()
+          .replace(/^[\s,.-]+/, '')
+
+        if (titulo.length > 2) {
+          await actions.createTask({ title: titulo, date: fecha, completed: false })
+          accionRealizada = { tipo: 'tarea', titulo, fecha }
+        }
+      }
+
+      else if (isMeta && actions.createGoal) {
+        const titulo = userText
+          .replace(/nueva?|cre[aá]|agrega[á]?|a[ñn]ad[ií]|meta:|meta|objetivo:|objetivo|quiero lograr|quiero/gi, '')
+          .trim()
+          .replace(/^[\s,.:]+/, '')
+
+        if (titulo.length > 2) {
+          await actions.createGoal({ title: titulo })
+          accionRealizada = { tipo: 'meta', titulo }
+        }
+      }
+
+      else if (isApunte && actions.createNote) {
+        // Buscar el último mensaje del asistente para guardarlo
+        const lastAssistant = [...updatedMessages].reverse().find(m => m.role === 'assistant')
+        const contenido = lastAssistant?.content || userText
+        const titulo = userText
+          .replace(/guard[aá]|anot[aá]|cre[aá]|esto|como apunte|apunte:|apunte|nuevo/gi, '')
+          .trim()
+          .replace(/^[\s,.:]+/, '') || 'Apunte del asistente'
+
+        const catId = actions.defaultCatId || null
+        await actions.createNote({ title: titulo || 'Apunte del asistente', content: `<p>${contenido}</p>`, categoryId: catId })
+        accionRealizada = { tipo: 'apunte', titulo: titulo || 'Apunte del asistente' }
+      }
+
+      // Construir system prompt con contexto de la acción realizada
+      let systemFinal = systemPrompt
+      if (accionRealizada) {
+        const confirmaciones = {
+          tarea:  `El usuario pidió crear una tarea y ya la creaste exitosamente: "${accionRealizada.titulo}" para el ${accionRealizada.fecha}. Confirmale que la creaste y ofrecé ayuda adicional.`,
+          meta:   `El usuario pidió crear una meta y ya la creaste exitosamente: "${accionRealizada.titulo}". Confirmale que la creaste y motivalo con un comentario breve.`,
+          apunte: `El usuario pidió guardar un apunte y ya lo guardaste exitosamente: "${accionRealizada.titulo}". Confirmale que lo guardaste.`,
+        }
+        systemFinal = systemPrompt + `\n\nACCIÓN YA EJECUTADA: ${confirmaciones[accionRealizada.tipo]}`
+      }
+
+      const { text, sources } = await askGemini({
+        messages:  updatedMessages,
+        systemPrompt: systemFinal,
+        useSearch,
+      })
+
+      // Si hubo acción, agregar badge visual al mensaje
+      const msgExtra = accionRealizada ? { accion: accionRealizada } : {}
+      setMessages(prev => [...prev, { role: 'assistant', content: text, sources, ...msgExtra }])
+
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }
   }, [messages, loading, contextData])

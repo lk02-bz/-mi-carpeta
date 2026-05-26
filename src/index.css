@@ -35,36 +35,77 @@
    3. VARIABLES CSS — Sistema de diseño
    ════════════════════════════════════════════════════════ */
 :root {
-  --bg:     #ffffff;
-  --bg2:    #f5f5f0;
-  --bg3:    #efefea;
-  --text:   #1a1a1a;
-  --text2:  #666660;
-  --text3:  #aaaaaa;
-  --border:  rgba(0,0,0,0.10);
-  --border2: rgba(0,0,0,0.20);
-  --accent:    #1a1a1a;
+  /* ── Cosmic Dark Theme ── */
+  --bg:      #03030a;
+  --bg2:     #0e0e1a;
+  --bg3:     #151525;
+  --card:    rgba(14,14,26,0.9);
+  --text:    #e2e8f0;
+  --text2:   #4a4a6a;
+  --text3:   #2a2a3a;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --accent:    #6366f1;
   --accent-fg: #ffffff;
-  --danger:    #c0392b;
+  --danger:    #ef4444;
   --radius:    14px;
   --radius-sm:  8px;
   --sans:   'DM Sans', system-ui, sans-serif;
   --serif:  'Playfair Display', Georgia, serif;
+
+  /* ── Colores de sección ── */
+  --c-habits:  #f97316;
+  --c-tasks:   #60a5fa;
+  --c-goals:   #a78bfa;
+  --c-vision:  #ec4899;
+  --c-insights:#818cf8;
+
+  /* ── Neon glow por acento ── */
+  --glow: rgba(99,102,241,0.25);
 }
 
+/* Dark mode = same as root (always dark) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg:     #111111;
-    --bg2:    #1c1c1c;
-    --bg3:    #252525;
-    --text:   #f0f0f0;
-    --text2:  #999999;
-    --text3:  #555555;
-    --border:  rgba(255,255,255,0.10);
-    --border2: rgba(255,255,255,0.20);
-    --accent:    #f0f0f0;
-    --accent-fg: #111111;
+    --bg:      #03030a;
+    --bg2:     #0e0e1a;
+    --bg3:     #151525;
+    --card:    rgba(14,14,26,0.9);
+    --text:    #e2e8f0;
+    --text2:   #4a4a6a;
+    --text3:   #2a2a3a;
+    --border:  rgba(255,255,255,0.06);
+    --border2: rgba(255,255,255,0.12);
+    --accent:    #6366f1;
+    --accent-fg: #ffffff;
   }
+}
+
+/* ── Animaciones cósmicas ── */
+@keyframes cosmicTwinkle {
+  0%,100% { opacity: .2; transform: scale(1); }
+  50%      { opacity: .9; transform: scale(1.4); }
+}
+@keyframes cosmicFloat {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-5px); }
+}
+@keyframes cosmicGlow {
+  0%,100% { box-shadow: 0 0 8px var(--glow); }
+  50%     { box-shadow: 0 0 24px var(--glow), 0 0 48px var(--glow); }
+}
+@keyframes cosmicSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cosmicPulse {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.06); }
+}
+@keyframes shootingStar {
+  0%   { opacity: 0; transform: translateX(0) translateY(0); }
+  10%  { opacity: .7; }
+  100% { opacity: 0; transform: translateX(-140px) translateY(70px); }
 }
 
 
@@ -116,8 +157,9 @@ body {
    ════════════════════════════════════════════════════════ */
 .topbar {
   flex-shrink: 0;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: rgba(3,3,10,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 0.5px solid rgba(99,102,241,0.12);
   padding: 12px 14px;
   display: flex;
   align-items: center;
@@ -167,7 +209,6 @@ body {
   display: none;
   background: var(--bg);
 }
-
 .screen.active { display: block; }
 
 .cnt { padding: 16px 14px 24px; }
@@ -178,47 +219,52 @@ body {
    ════════════════════════════════════════════════════════ */
 .bnav {
   flex-shrink: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
+  background: rgba(8,8,18,0.96);
+  backdrop-filter: blur(16px);
+  border-top: 0.5px solid rgba(99,102,241,0.15);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 6px 0;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 8px 0;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 .nbtn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text3);
+  color: #1e1e3a;
   padding: 4px 14px;
   border-radius: 10px;
   font-size: 10px;
   font-family: var(--sans);
-  transition: color .15s;
+  transition: color .2s;
 }
-.nbtn.on { color: var(--text); }
-.nbtn svg { width: 20px; height: 20px; }
+.nbtn.on { color: var(--accent); }
+.nbtn.on svg { filter: drop-shadow(0 0 6px var(--accent)); }
+.nbtn svg { width: 22px; height: 22px; }
 
 .addbtn {
   background: var(--accent);
   color: var(--accent-fg);
   border: none;
   border-radius: 50%;
-  width: 46px; height: 46px;
+  width: 50px; height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 24px;
-  margin-bottom: 2px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  font-size: 26px;
+  margin-bottom: 4px;
+  box-shadow: 0 0 20px var(--glow), 0 0 40px rgba(99,102,241,0.15);
+  animation: cosmicGlow 3s ease-in-out infinite;
+  transition: transform .15s;
 }
+.addbtn:active { transform: scale(0.93); }
 
 
 /* ════════════════════════════════════════════════════════
@@ -2078,4 +2124,201 @@ textarea {
 .brief-date {
   font-size: 12px; color: var(--text3);
   margin: 0 0 12px; text-transform: capitalize;
+}
+/* ════════════════════════════════════════════════════════
+   COSMIC DESIGN SYSTEM
+   ════════════════════════════════════════════════════════ */
+
+/* Star canvas background */
+.star-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-cosmic {
+  position: relative;
+  min-height: 100%;
+  background: var(--bg);
+}
+
+.home-cosmic > .home-content {
+  position: relative;
+  z-index: 1;
+  padding: 16px 14px 120px;
+}
+
+/* Shooting star CSS */
+.shooting-star {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7));
+  border-radius: 1px;
+  animation: shootingStar 5s ease-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Cosmic cards */
+.cosmic-card {
+  background: rgba(14,14,26,0.85);
+  border: 0.5px solid rgba(99,102,241,0.2);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+}
+
+/* Neon active dot for nav */
+.nav-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  margin-top: 2px;
+}
+
+/* Greeting updates */
+.greeting-name {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.greeting-date {
+  font-size: 12px;
+  color: var(--text2);
+  letter-spacing: 0.02em;
+}
+
+/* Habit row cosmic */
+.habit-row-cosmic {
+  background: var(--bg2);
+  border: 0.5px solid rgba(249,115,22,0.15);
+  border-radius: 14px;
+  transition: border-color .2s, background .2s;
+}
+.habit-row-cosmic.done {
+  background: rgba(249,115,22,0.07);
+  border-color: rgba(249,115,22,0.35);
+}
+
+/* Focus pills cosmic */
+.focus-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.focus-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 0.5px solid rgba(255,255,255,0.06);
+}
+.focus-pill-icon { font-size: 18px; }
+.focus-pill-info { flex: 1; }
+.focus-pill-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+.focus-pill-value { font-size: 20px; font-weight: 700; line-height: 1; margin-top: 1px; }
+
+/* Section headers */
+.sec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.sec-icon { font-size: 16px; }
+.sec-label { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; flex: 1; }
+.sec-action { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: var(--sans); font-weight: 600; }
+
+/* Note row cosmic */
+.note-row {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.note-row:hover { border-color: rgba(99,102,241,0.3); }
+.nt { font-size: 14px; font-weight: 600; color: var(--text); }
+.np { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+.nd { font-size: 11px; color: var(--text3); }
+
+/* Insight cards cosmic */
+.insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+  border: 0.5px solid rgba(255,255,255,0.06);
+  background: var(--bg2);
+}
+.insight-card.warning { border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.06); }
+.insight-card.success { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.05); }
+.insight-card.info    { border-color: rgba(99,102,241,0.2); background: rgba(99,102,241,0.06); }
+.insight-card.tip     { border-color: rgba(99,102,241,0.15); background: rgba(99,102,241,0.04); }
+.insight-emoji { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.insight-body  { flex: 1; min-width: 0; }
+.insight-title  { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.insight-detail { font-size: 12px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+
+/* Task quick row */
+.task-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.task-quick-row:last-child { border-bottom: none; }
+
+.task-check {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text3);
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.task-check.done {
+  background: var(--c-tasks);
+  border-color: var(--c-tasks);
+  box-shadow: 0 0 8px rgba(96,165,250,0.4);
+}
+
+/* Chip */
+.chip {
+  display: inline-block;
+  background: var(--bg3);
+  border: 0.5px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text2);
+}
+
+/* Card class */
+.card {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text2);
+  font-size: 14px;
 }

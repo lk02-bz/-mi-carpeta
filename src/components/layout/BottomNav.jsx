@@ -2,10 +2,11 @@
 ╔══════════════════════════════════════════════════════════╗
 ║  src/components/layout/BottomNav.jsx                     ║
 ║                                                          ║
-║  Cambios Fase 4:                                         ║
-║  ✦ Reemplaza Stats por Metas (opción A)                  ║
-║  ✦ Stats sigue accesible desde ProfileScreen             ║
-║  Layout: Inicio | Cats | + | Metas | Cal                 ║
+║  Rediseño Cósmico:                                       ║
+║  ✦ Fondo oscuro con blur                                 ║
+║  ✦ Ícono activo con glow neon                            ║
+║  ✦ Punto indicador animado                               ║
+║  ✦ Botón central con glow pulsante                       ║
 ╚══════════════════════════════════════════════════════════╝
 */
 
@@ -27,7 +28,7 @@ export default function BottomNav() {
           <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
           <polyline points="9 22 9 12 15 12 15 22" />
         </svg>
-        Inicio
+        {active === 'home' && <div className="nav-dot" />}
       </button>
 
       {/* ── Categorías ── */}
@@ -41,10 +42,10 @@ export default function BottomNav() {
           <rect x="3"  y="14" width="7" height="7" rx="1" />
           <rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
-        Cats
+        {active === 'cats' && <div className="nav-dot" />}
       </button>
 
-      {/* ── Botón "+" central ── */}
+      {/* ── Botón "+" central con glow cósmico ── */}
       <button
         className="addbtn"
         onClick={() => pushTo('editor', { title: 'Nuevo apunte', noteId: null })}
@@ -63,7 +64,7 @@ export default function BottomNav() {
           <circle cx="12" cy="12" r="5" />
           <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
         </svg>
-        Metas
+        {(active === 'goals' || active === 'vision') && <div className="nav-dot" />}
       </button>
 
       {/* ── Calendario ── */}
@@ -77,7 +78,7 @@ export default function BottomNav() {
           <line x1="8"  y1="2" x2="8"  y2="6" />
           <line x1="3"  y1="10" x2="21" y2="10" />
         </svg>
-        Cal
+        {active === 'calendar' && <div className="nav-dot" />}
       </button>
 
     </div>

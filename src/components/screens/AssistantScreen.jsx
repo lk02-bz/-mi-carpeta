@@ -49,7 +49,9 @@ const INCOME_SOURCES = [
   { id: 'freelance', label: 'Freelance',         emoji: '🎯', color: '#f97316' },
   { id: 'otro',      label: 'Otro',              emoji: '💰', color: '#16a34a' },
 ]
-const META_MENSUAL = 1000000
+const META_MENSUAL_DEFAULT = 1000000
+function getMetaMensual() { try { return Number(localStorage.getItem('meta_mensual')) || META_MENSUAL_DEFAULT } catch { return META_MENSUAL_DEFAULT } }
+function saveMetaMensual(v) { try { localStorage.setItem('meta_mensual', String(v)) } catch {} }
 
 /* ── Helpers ── */
 function htmlToText(h = '') { return h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() }
@@ -65,7 +67,7 @@ export default function AssistantScreen() {
   const {
     displayName, assistantName, updateAssistantName,
     habits, habitLogs, tasks, goals, notes, cats,
-    getTasksForDate, createNote, createTask, showToast, pushTo, navTo,
+    getTasksForDate, createNote, createTask, createGoal, showToast, pushTo, navTo,
   } = useApp()
 
   const { habitStats, bestStreak } = useStats({ notes: [], habits, habitLogs, tasks })
@@ -95,8 +97,8 @@ export default function AssistantScreen() {
         ))}
       </div>
       <div className="assistant-content">
-        {activeTab === 'chat'     && <ChatTab       assistant={assistant} assistantName={assistantName} createNote={createNote} showToast={showToast} pushTo={pushTo} cats={cats} />}
-        {activeTab === 'devo'     && <DevocionalTab assistant={assistant} showToast={showToast} />}
+        {activeTab === 'chat'     && <ChatTab       assistant={assistant} assistantName={assistantName} createNote={createNote} showToast={showToast} pushTo={pushTo} cats={cats} createTask={createTask} createGoal={createGoal} />}
+        {activeTab === 'devo'     && <DevocionalTab assistant={assistant} showToast={showToast} cats={cats} createNote={createNote} />}
         {activeTab === 'plan'     && <StudyPlanTab  assistant={assistant} notes={notes} cats={cats} createTask={createTask} createNote={createNote} showToast={showToast} navTo={navTo} assistantName={assistantName} />}
         {activeTab === 'coach'    && <HabitCoachTab assistant={assistant} habitStats={habitStats} habitLogs={habitLogs} assistantName={assistantName} />}
         {activeTab === 'finanzas' && <FinanzasTab   assistant={assistant} assistantName={assistantName} showToast={showToast} />}
@@ -110,7 +112,7 @@ export default function AssistantScreen() {
 /* ════════════════════════════════════════════════════════
    CHAT
    ════════════════════════════════════════════════════════ */
-function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats }) {
+function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats, createTask, createGoal }) {
   const { messages, loading, error, sendMessage, clearChat, saveLastResponseAsNote } = assistant
   const [input, setInput] = useState('')
   const [useSearch, setUseSearch] = useState(false)
@@ -118,10 +120,22 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
   const recognitionRef = useRef(null)
   const bottomRef = useRef(null)
 
+  // Acciones disponibles para el asistente
+  const actions = {
+    createTask,
+    createGoal,
+    createNote,
+    defaultCatId: cats?.[0]?.id ?? null,
+  }
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
   useEffect(() => { return () => recognitionRef.current?.abort() }, [])
 
-  const handleSend = () => { if (!input.trim()) return; sendMessage(input.trim(), useSearch); setInput('') }
+  const handleSend = () => {
+    if (!input.trim()) return
+    sendMessage(input.trim(), useSearch, actions)
+    setInput('')
+  }
 
   function handleMic() {
     if (listening) { recognitionRef.current?.abort(); setListening(false); return }
@@ -148,8 +162,12 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
             <p className="chat-empty-title">Hola, soy {assistantName} 👋</p>
             <p className="chat-empty-sub">Preguntame lo que quieras — código, ideas, dudas, lo que sea.</p>
             <div className="chat-suggestions">
-              {['¿Podés explicarme qué es la recursión?','¿Cómo consigo más clientes para web dev?','¿Qué es la programación orientada a objetos?'].map(s => (
-                <button key={s} className="chat-suggestion" onClick={() => sendMessage(s)}>{s}</button>
+              {[
+                '¿Podés explicarme qué es la recursión?',
+                'Creá una tarea para mañana: repasar algoritmos',
+                'Nueva meta: conseguir 3 clientes web dev',
+              ].map(s => (
+                <button key={s} className="chat-suggestion" onClick={() => sendMessage(s, false, actions)}>{s}</button>
               ))}
             </div>
           </div>
@@ -160,6 +178,14 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
               <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{msg.content}</p>
               {msg.sources?.length > 0 && <div className="chat-sources"><span className="chat-sources-label">Fuentes:</span>{msg.sources.map((s, j) => <a key={j} href={s.url} target="_blank" rel="noreferrer" className="chat-source-link">{s.title || s.url}</a>)}</div>}
             </div>
+            {/* Badge de acción ejecutada */}
+            {msg.accion && (
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, padding:'6px 10px', background: msg.accion.tipo==='tarea'?'rgba(37,99,235,0.1)':msg.accion.tipo==='meta'?'rgba(139,92,246,0.1)':'rgba(22,163,74,0.1)', borderRadius:8, fontSize:12, color: msg.accion.tipo==='tarea'?'#2563eb':msg.accion.tipo==='meta'?'#8b5cf6':'#16a34a', fontWeight:600 }}>
+                {msg.accion.tipo==='tarea'  && `✅ Tarea creada: "${msg.accion.titulo}"`}
+                {msg.accion.tipo==='meta'   && `🎯 Meta creada: "${msg.accion.titulo}"`}
+                {msg.accion.tipo==='apunte' && `📝 Apunte guardado: "${msg.accion.titulo}"`}
+              </div>
+            )}
             {msg.role === 'assistant' && i === messages.length - 1 && <button className="chat-save-btn" onClick={handleSaveNote}><IconSave /> Guardar como apunte</button>}
           </div>
         ))}
@@ -187,12 +213,45 @@ function ChatTab({ assistant, assistantName, createNote, showToast, pushTo, cats
 /* ════════════════════════════════════════════════════════
    DEVOCIONAL
    ════════════════════════════════════════════════════════ */
-function DevocionalTab({ assistant, showToast }) {
+function DevocionalTab({ assistant, showToast, cats, createNote }) {
   const { devotional, devLoading, loadDevotional, userAnswer, setUserAnswer, answerSaved, saveDevotionalAnswer } = assistant
   const { isSpeaking, toggle, stop } = useSpeech()
+  const [savingNote,   setSavingNote]   = useState(false)
+  const [noteSaved,    setNoteSaved]    = useState(false)
+  const [selectedCat,  setSelectedCat]  = useState('')
+  const [showCatPick,  setShowCatPick]  = useState(false)
   useEffect(() => { return () => stop() }, []) // eslint-disable-line
   useEffect(() => { loadDevotional() }, [])
+  useEffect(() => { if (cats?.length > 0 && !selectedCat) setSelectedCat(cats[0].id) }, [cats])
+
   const handleSave = async () => { await saveDevotionalAnswer(); showToast('✅ Reflexión guardada') }
+
+  async function handleSaveAsNote() {
+    if (!devotional || !selectedCat) return
+    setSavingNote(true)
+    const today = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    const content = [
+      `<h2>✝️ ${devotional.verseRef || 'Devocional de hoy'}</h2>`,
+      `<blockquote><p>${devotional.verse}</p></blockquote>`,
+      devotional.historicalContext && `<h3>📜 Contexto histórico</h3><p>${devotional.historicalContext}</p>`,
+      devotional.centralTeaching   && `<h3>💡 Enseñanza central</h3><p>${devotional.centralTeaching}</p>`,
+      devotional.deepDive          && `<h3>📚 Profundizando</h3><p>${devotional.deepDive}</p>`,
+      devotional.christianValue    && `<h3>🌱 Valor cristiano</h3><p>${devotional.christianValue}</p>`,
+      devotional.meditationQuestion && `<h3>🤔 Para meditar</h3><p>${devotional.meditationQuestion}</p>`,
+      devotional.prayer            && `<h3>🙏 Oración</h3><p><em>${devotional.prayer}</em></p>`,
+      userAnswer && `<h3>✏️ Mi reflexión personal</h3><p>${userAnswer}</p>`,
+    ].filter(Boolean).join('\n')
+
+    const { error } = await createNote({
+      title: `Devocional — ${today}`,
+      content,
+      categoryId: selectedCat,
+    })
+    setSavingNote(false)
+    if (error) { showToast('Error al guardar'); return }
+    setNoteSaved(true)
+    showToast('✅ Devocional guardado como apunte')
+  }
   function buildText() {
     if (!devotional) return ''
     return [devotional.verse, devotional.historicalContext&&`Contexto. ${devotional.historicalContext}`, devotional.centralTeaching&&`Enseñanza. ${devotional.centralTeaching}`, devotional.deepDive&&`Profundizando. ${devotional.deepDive}`, devotional.christianValue&&`Valor. ${devotional.christianValue}`, devotional.lifeConnection&&`Para hoy. ${devotional.lifeConnection}`, devotional.meditationQuestion&&`Para meditar. ${devotional.meditationQuestion}`, devotional.prayer&&`Oración. ${devotional.prayer}`].filter(Boolean).join('. ')
@@ -222,6 +281,35 @@ function DevocionalTab({ assistant, showToast }) {
         <h3 className="dev-section-title">✏️ Tu reflexión personal</h3>
         <textarea className="dev-answer-input" placeholder="¿Qué te habló Dios hoy?" value={userAnswer} onChange={e => setUserAnswer(e.target.value)} rows={4} disabled={answerSaved} />
         {!answerSaved ? <button className="dev-save-btn" onClick={handleSave} disabled={!userAnswer.trim()}>Guardar reflexión</button> : <p className="dev-saved-msg">✅ Reflexión guardada para hoy</p>}
+      </div>
+
+      {/* Guardar devocional como apunte */}
+      <div style={{ marginTop: 8, marginBottom: 32 }}>
+        {!noteSaved ? (
+          <>
+            {showCatPick && cats?.length > 0 && (
+              <select
+                value={selectedCat}
+                onChange={e => setSelectedCat(e.target.value)}
+                style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--accent)', background:'var(--bg2)', color:'var(--text)', fontSize:13, fontFamily:'var(--sans)', marginBottom:8 }}
+              >
+                {cats.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+              </select>
+            )}
+            <button
+              onClick={() => { if (!showCatPick) { setShowCatPick(true) } else { handleSaveAsNote() } }}
+              disabled={savingNote}
+              style={{ width:'100%', padding:'12px 0', borderRadius:12, border:'1.5px solid var(--border)', background:'transparent', color:'var(--text2)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'var(--sans)', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}
+            >
+              <IconSave />
+              {savingNote ? 'Guardando...' : showCatPick ? 'Confirmar y guardar como apunte' : 'Guardar como apunte'}
+            </button>
+          </>
+        ) : (
+          <div style={{ padding:'12px 0', textAlign:'center', fontSize:13, fontWeight:600, color:'#16a34a' }}>
+            ✅ Guardado como apunte
+          </div>
+        )}
       </div>
     </div>
   )
@@ -466,12 +554,24 @@ function FinanzasTab({ assistant, assistantName, showToast }) {
 /* ── Sub-tab: Situación actual ── */
 function SituacionTab({ assistant, showToast }) {
   const { incomeRecords, financeLoading, loadIncomeRecords, addIncomeRecord, deleteIncomeRecord } = assistant
-  const [showForm,  setShowForm]  = useState(false)
-  const [source,    setSource]    = useState('webdev')
-  const [amount,    setAmount]    = useState('')
-  const [date,      setDate]      = useState(new Date().toISOString().slice(0,10))
-  const [note,      setNote]      = useState('')
-  const [saving,    setSaving]    = useState(false)
+  const [showForm,   setShowForm]   = useState(false)
+  const [source,     setSource]     = useState('webdev')
+  const [amount,     setAmount]     = useState('')
+  const [date,       setDate]       = useState(new Date().toISOString().slice(0,10))
+  const [note,       setNote]       = useState('')
+  const [saving,     setSaving]     = useState(false)
+  const [metaMensual,    setMetaMensualState] = useState(getMetaMensual)
+  const [editingMeta,    setEditingMeta]      = useState(false)
+  const [metaInput,      setMetaInput]        = useState('')
+
+  function handleSaveMeta() {
+    const v = Number(metaInput.replace(/\./g, '').replace(',',''))
+    if (!v || v < 1000) { showToast('Ingresá un monto válido'); return }
+    setMetaMensualState(v)
+    saveMetaMensual(v)
+    setEditingMeta(false)
+    showToast('✅ Meta actualizada')
+  }
 
   useEffect(() => { loadIncomeRecords() }, [])
 
@@ -492,7 +592,7 @@ function SituacionTab({ assistant, showToast }) {
 
   const ingresosMesActual  = incomeRecords.filter(r => r.date?.slice(0,7) === mesActualKey).reduce((s,r) => s + Number(r.amount), 0)
   const ingresosMesAnterior = incomeRecords.filter(r => r.date?.slice(0,7) === mesAnteriorKey).reduce((s,r) => s + Number(r.amount), 0)
-  const pctMeta = Math.min(100, Math.round((ingresosMesActual / META_MENSUAL) * 100))
+  const pctMeta = Math.min(100, Math.round((ingresosMesActual / metaMensual) * 100))
   const tendencia = ingresosMesActual >= ingresosMesAnterior ? '↑' : '↓'
 
   // Agrupar por fuente este mes
@@ -526,8 +626,26 @@ function SituacionTab({ assistant, showToast }) {
             <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>{fmoney(ingresosMesActual)}</p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Meta</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{fmoney(META_MENSUAL)}</p>
+            <p style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Meta mensual</p>
+            {editingMeta ? (
+              <div style={{ display: 'flex', gap: 4, marginTop: 4, justifyContent: 'flex-end' }}>
+                <input
+                  type="number"
+                  value={metaInput}
+                  onChange={e => setMetaInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveMeta()}
+                  autoFocus
+                  style={{ width: 110, padding: '4px 8px', borderRadius: 8, border: '1.5px solid var(--accent)', background: 'var(--bg3)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+                <button onClick={handleSaveMeta} style={{ padding:'4px 10px', borderRadius:8, border:'none', background:'var(--accent)', color:'var(--accent-fg)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'var(--sans)' }}>✓</button>
+                <button onClick={() => setEditingMeta(false)} style={{ padding:'4px 8px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text2)', fontSize:12, cursor:'pointer', fontFamily:'var(--sans)' }}>✕</button>
+              </div>
+            ) : (
+              <button onClick={() => { setMetaInput(String(metaMensual)); setEditingMeta(true) }}
+                style={{ background:'none', border:'none', cursor:'pointer', padding:0, textAlign:'right', display:'block', marginLeft:'auto' }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginTop: 2 }}>{fmoney(metaMensual)} ✏️</p>
+              </button>
+            )}
           </div>
         </div>
         <div style={{ height: 10, background: 'var(--bg3)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
@@ -536,7 +654,7 @@ function SituacionTab({ assistant, showToast }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
           <span style={{ color: 'var(--text2)' }}>{pctMeta}% de la meta</span>
           <span style={{ color: pctMeta >= 100 ? '#16a34a' : 'var(--text2)' }}>
-            {pctMeta >= 100 ? '🎉 Meta superada!' : `Faltan ${fmoney(META_MENSUAL - ingresosMesActual)}`}
+            {pctMeta >= 100 ? '🎉 Meta superada!' : `Faltan ${fmoney(metaMensual - ingresosMesActual)}`}
           </span>
         </div>
         {ingresosMesAnterior > 0 && (
@@ -1006,7 +1124,7 @@ function ProyeccionTab() {
   function calcularProyeccion() {
     const base = Number(ingresosActuales) || 0
     const tasa = (Number(crecimientoMensual) || 0) / 100
-    const metaN = Number(meta) || META_MENSUAL
+    const metaN = Number(meta) || META_MENSUAL_DEFAULT
     if (!base || !tasa) return []
 
     const puntos = []
@@ -1025,7 +1143,7 @@ function ProyeccionTab() {
 
   const proyeccion = ingresosActuales ? calcularProyeccion() : []
   const mesesParaMeta = proyeccion.length > 0 ? proyeccion[proyeccion.length - 1]?.mes : null
-  const maxMonto = Math.max(...proyeccion.map(p => p.monto), Number(meta)||META_MENSUAL)
+  const maxMonto = Math.max(...proyeccion.map(p => p.monto), Number(meta)||META_MENSUAL_DEFAULT)
 
   const inputS = { width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--bg2)', color:'var(--text)', fontSize:14, fontFamily:'var(--sans)', boxSizing:'border-box' }
 
@@ -1061,7 +1179,7 @@ function ProyeccionTab() {
             {mesesParaMeta ? (
               <>
                 <p style={{ fontSize:32, fontWeight:900, color:'var(--text)' }}>{mesesParaMeta} meses</p>
-                <p style={{ fontSize:13, color:'var(--text2)', marginTop:4 }}>para llegar a {fmoney(Number(meta)||META_MENSUAL)}/mes creciendo {crecimientoMensual}% mensual</p>
+                <p style={{ fontSize:13, color:'var(--text2)', marginTop:4 }}>para llegar a {fmoney(Number(meta)||META_MENSUAL_DEFAULT)}/mes creciendo {crecimientoMensual}% mensual</p>
                 <p style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>Desde hoy → {new Date(new Date().setMonth(new Date().getMonth()+mesesParaMeta)).toLocaleDateString('es-AR',{month:'long',year:'numeric'})}</p>
               </>
             ) : (
@@ -1075,7 +1193,7 @@ function ProyeccionTab() {
             <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:80 }}>
               {proyeccion.slice(0, 12).map((p, i) => {
                 const h = Math.max(4, (p.monto / maxMonto) * 76)
-                const isGoal = p.monto >= (Number(meta)||META_MENSUAL)
+                const isGoal = p.monto >= (Number(meta)||META_MENSUAL_DEFAULT)
                 return (
                   <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
                     <div style={{ width:'100%', background:isGoal?'#16a34a':'var(--accent)', borderRadius:'3px 3px 0 0', height:`${h}px`, opacity:0.8 }}/>
@@ -1092,10 +1210,10 @@ function ProyeccionTab() {
             {proyeccion.map((p, i) => (
               <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom: i < proyeccion.length-1 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background:p.monto>=(Number(meta)||META_MENSUAL)?'rgba(22,163,74,0.15)':'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:p.monto>=(Number(meta)||META_MENSUAL)?'#16a34a':'var(--text2)' }}>{p.mes}</div>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background:p.monto>=(Number(meta)||META_MENSUAL_DEFAULT)?'rgba(22,163,74,0.15)':'var(--bg3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:p.monto>=(Number(meta)||META_MENSUAL_DEFAULT)?'#16a34a':'var(--text2)' }}>{p.mes}</div>
                   <span style={{ fontSize:12, color:'var(--text2)' }}>Mes {p.mes}</span>
                 </div>
-                <span style={{ fontSize:14, fontWeight:700, color:p.monto>=(Number(meta)||META_MENSUAL)?'#16a34a':'var(--text)' }}>{fmoney(p.monto)}/mes</span>
+                <span style={{ fontSize:14, fontWeight:700, color:p.monto>=(Number(meta)||META_MENSUAL_DEFAULT)?'#16a34a':'var(--text)' }}>{fmoney(p.monto)}/mes</span>
               </div>
             ))}
           </div>
