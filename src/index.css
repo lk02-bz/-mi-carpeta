@@ -28,7 +28,7 @@
 /* ════════════════════════════════════════════════════════
    2. FUENTES DE GOOGLE
    ════════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap');
 
 
 /* ════════════════════════════════════════════════════════
@@ -41,8 +41,8 @@
   --bg3:     rgba(20,20,38,0.75);
   --card:    rgba(14,14,26,0.85);
   --text:    #f1f5f9;
-  --text2:   #6b7280;
-  --text3:   #374151;
+  --text2:   #9ca3af;
+  --text3:   #6b7280;
   --border:  rgba(255,255,255,0.07);
   --border2: rgba(255,255,255,0.15);
   --accent:    #6366f1;
@@ -50,7 +50,7 @@
   --danger:    #ef4444;
   --radius:    14px;
   --radius-sm:  8px;
-  --sans:   'DM Sans', system-ui, sans-serif;
+  --sans:   'Space Grotesk', 'DM Sans', system-ui, sans-serif;
   --serif:  'Playfair Display', Georgia, serif;
 
   /* ── Colores de sección ── */
@@ -2315,3 +2315,153 @@ textarea {
   color: var(--text2);
   font-size: 14px;
 }
+
+/* ════════════════════════════════════════════════════════
+   BORDES NEON GIRATORIOS — técnica conic-gradient spin
+   ════════════════════════════════════════════════════════ */
+
+@keyframes spinBorder { to { transform: rotate(360deg); } }
+@keyframes fireFlicker {
+  0%,100%{opacity:1;transform:scaleY(1) translateY(0)}
+  25%{opacity:.85;transform:scaleY(1.08) translateY(-1px)}
+  75%{opacity:.92;transform:scaleY(.96) translateY(1px)}
+}
+@keyframes iceShimmer { 0%,100%{opacity:.7} 50%{opacity:1} }
+@keyframes devGlow {
+  0%,100%{box-shadow:0 0 8px rgba(251,191,36,0.2)}
+  50%{box-shadow:0 0 24px rgba(251,191,36,0.45)}
+}
+@keyframes particleFloat {
+  0%{transform:translateY(0) translateX(0);opacity:.7}
+  50%{transform:translateY(-8px) translateX(3px);opacity:1}
+  100%{transform:translateY(0) translateX(0);opacity:.7}
+}
+@keyframes cosmicFloat {
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-5px)}
+}
+
+/* ── Violeta giratorio (apuntes) ── */
+.neon-spin-violet {
+  position: relative;
+  border-radius: 18px;
+  padding: 2px;
+  overflow: hidden;
+}
+.neon-spin-violet::before {
+  content: '';
+  position: absolute;
+  inset: -80%;
+  background: conic-gradient(
+    transparent 0deg,
+    transparent 240deg,
+    #818cf8 270deg,
+    #c084fc 300deg,
+    #e879f9 330deg,
+    #818cf8 360deg
+  );
+  animation: spinBorder 3s linear infinite;
+}
+.neon-spin-violet-inner {
+  position: relative;
+  z-index: 1;
+  background: rgba(10,8,20,0.97);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+/* ── Dorado giratorio (devocional) ── */
+.neon-spin-gold {
+  position: relative;
+  border-radius: 18px;
+  padding: 2px;
+  overflow: hidden;
+  animation: devGlow 4s ease-in-out infinite;
+}
+.neon-spin-gold::before {
+  content: '';
+  position: absolute;
+  inset: -80%;
+  background: conic-gradient(
+    transparent 0deg,
+    transparent 220deg,
+    #d97706 250deg,
+    #fbbf24 290deg,
+    #fcd34d 320deg,
+    #fbbf24 350deg,
+    transparent 360deg
+  );
+  animation: spinBorder 4s linear infinite;
+}
+.neon-spin-gold-inner {
+  position: relative;
+  z-index: 1;
+  background: rgba(10,7,0,0.97);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+/* ── Fuego giratorio (racha activa) ── */
+.neon-spin-fire {
+  position: relative;
+  border-radius: 18px;
+  padding: 2px;
+  overflow: hidden;
+}
+.neon-spin-fire::before {
+  content: '';
+  position: absolute;
+  inset: -80%;
+  background: conic-gradient(
+    transparent 0deg,
+    transparent 200deg,
+    #dc2626 230deg,
+    #f97316 270deg,
+    #fbbf24 310deg,
+    #f97316 340deg,
+    transparent 360deg
+  );
+  animation: spinBorder 2.5s linear infinite;
+}
+.neon-spin-fire-inner {
+  position: relative;
+  z-index: 1;
+  background: rgba(12,5,0,0.97);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+/* ── Hielo giratorio (racha inactiva) ── */
+.neon-spin-ice {
+  position: relative;
+  border-radius: 18px;
+  padding: 2px;
+  overflow: hidden;
+}
+.neon-spin-ice::before {
+  content: '';
+  position: absolute;
+  inset: -80%;
+  background: conic-gradient(
+    transparent 0deg,
+    transparent 220deg,
+    #1d4ed8 250deg,
+    #60a5fa 290deg,
+    #a5f3fc 320deg,
+    #60a5fa 350deg,
+    transparent 360deg
+  );
+  animation: spinBorder 3s linear infinite;
+}
+.neon-spin-ice-inner {
+  position: relative;
+  z-index: 1;
+  background: rgba(0,5,20,0.97);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+/* ── Llama animada ── */
+.flame-anim { display:inline-block; animation:fireFlicker 1.2s ease-in-out infinite; }
+.flame-anim:nth-child(2){ animation-delay:.3s; }
+.flame-anim:nth-child(3){ animation-delay:.6s; }
